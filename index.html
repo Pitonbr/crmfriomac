@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Friomac CRM — Sistema de Gestão Comercial</title>
+  <meta name="description" content="Friomac CRM — Gestão de Leads, Orçamentos e Funil de Vendas">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    /* Inline critical SVG favicon */
+    html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════
+     LOGIN SCREEN
+══════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon">
+        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </div>
+      <h1>FRIO<span>MAC</span></h1>
+      <p>Sistema de Gestão Comercial CRM</p>
+    </div>
+
+    <form class="login-form" id="login-form" autocomplete="off">
+      <div>
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" placeholder="seu@email.com" autocomplete="username">
+      </div>
+      <div>
+        <label for="login-senha">Senha</label>
+        <input type="password" id="login-senha" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn-login">Entrar no Sistema</button>
+    </form>
+
+    <p class="login-hint">Acesso rápido (demonstração):</p>
+    <div class="login-users">
+      <button class="login-user-btn" data-email="admin@friomac.ind.br">
+        <span class="u-role">Admin</span>
+        Administrador
+      </button>
+      <button class="login-user-btn" data-email="caio@friomac.ind.br">
+        <span class="u-role">Vendedor</span>
+        Caio Victor
+      </button>
+      <button class="login-user-btn" data-email="lauriberto@friomac.ind.br">
+        <span class="u-role">Representante</span>
+        Lauriberto
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     APP SHELL
+══════════════════════════════════ -->
+<div id="app" class="hidden">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </div>
+      <div class="sidebar-title">
+        <h2>FRIO<span>MAC</span></h2>
+        <p>CRM Comercial 2026</p>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">VISÃO GERAL</div>
+
+      <a class="nav-item" data-screen="dashboard">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        <span>Dashboard</span>
+        <span class="nav-tooltip">Dashboard</span>
+      </a>
+
+      <div class="nav-section-label">COMERCIAL</div>
+
+      <a class="nav-item" data-screen="kanban">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="15" rx="1"/>
+        </svg>
+        <span>Gestão de Leads</span>
+        <span id="badge-kanban" class="nav-badge">65</span>
+        <span class="nav-tooltip">Kanban de Leads</span>
+      </a>
+
+      <a class="nav-item" data-screen="orcamentos">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+        <span>Orçamentos</span>
+        <span class="nav-tooltip">Orçamentos</span>
+      </a>
+
+      <a class="nav-item" data-screen="clientes">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+        </svg>
+        <span>Clientes</span>
+        <span class="nav-tooltip">Clientes</span>
+      </a>
+
+      <div class="nav-section-label">EQUIPE</div>
+
+      <a class="nav-item" data-screen="vendedores">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M6 20v-2a6 6 0 0112 0v2"/>
+        </svg>
+        <span>Vendedores & Reps.</span>
+        <span class="nav-tooltip">Vendedores</span>
+      </a>
+
+      <a class="nav-item" data-screen="campanhas">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/>
+        </svg>
+        <span>Campanhas & Mídias</span>
+        <span class="nav-tooltip">Campanhas</span>
+      </a>
+
+      <a class="nav-item" data-screen="comissoes">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+        </svg>
+        <span>Comissões</span>
+        <span class="nav-tooltip">Comissões</span>
+      </a>
+
+      <div class="nav-section-label">OPERACIONAL</div>
+
+      <a class="nav-item" data-screen="prazo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+        </svg>
+        <span>Prazo de Entrega</span>
+        <span class="nav-tooltip">Entregas</span>
+      </a>
+
+      <div class="nav-section-label">SISTEMA</div>
+
+      <a class="nav-item" data-screen="config">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+        <span>Configurações</span>
+        <span class="nav-tooltip">Config</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user" id="btn-logout" title="Sair">
+        <div class="user-avatar user-avatar">AD</div>
+        <div class="user-info">
+          <strong class="user-name">Administrador</strong>
+          <span class="user-role">Master</span>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2" style="margin-left:auto;flex-shrink:0">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
+        </svg>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN CONTENT ── -->
+  <div class="main-content" id="main-content">
+
+    <!-- TOP HEADER -->
+    <header class="top-header">
+      <button class="btn-toggle-sidebar" id="btn-toggle-sidebar" title="Alternar menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+
+      <div>
+        <div class="page-title" id="page-title">Dashboard</div>
+        <div class="page-subtitle" id="page-subtitle">Visão geral comercial 2026</div>
+      </div>
+
+      <div class="header-spacer"></div>
+
+      <div class="header-actions">
+        <!-- Search -->
+        <div class="search-bar" style="max-width:200px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" placeholder="Busca rápida...">
+        </div>
+
+        <!-- Notifications -->
+        <button class="btn-icon" title="Notificações" onclick="App.toast('Você tem 8 alertas de SLA pendentes!','warning')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/>
+          </svg>
+          <span class="notif-dot"></span>
+        </button>
+
+        <!-- New Lead Quick -->
+        <button class="btn btn-accent btn-sm" onclick="App.navigateTo('kanban');setTimeout(()=>App.openNewLeadModal(),100)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Novo Lead
+        </button>
+
+        <!-- User -->
+        <div class="header-user" id="header-user-wrap">
+          <div class="user-avatar" style="width:30px;height:30px;font-size:.75rem">AD</div>
+          <div class="header-user-info">
+            <strong class="header-user-name">Admin</strong>
+            <span>Master</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- PAGE CONTENT -->
+    <main class="page-content">
+
+      <!-- DASHBOARD -->
+      <div class="screen active" id="screen-dashboard">
+        <div class="empty-state">
+          <div style="font-size:2rem;margin-bottom:12px">📊</div>
+          <p>Carregando dashboard...</p>
+        </div>
+      </div>
+
+      <!-- KANBAN -->
+      <div class="screen" id="screen-kanban"></div>
+
+      <!-- CLIENTES -->
+      <div class="screen" id="screen-clientes"></div>
+
+      <!-- ORÇAMENTOS -->
+      <div class="screen" id="screen-orcamentos"></div>
+
+      <!-- VENDEDORES -->
+      <div class="screen" id="screen-vendedores"></div>
+
+      <!-- CAMPANHAS & MÍDIAS -->
+      <div class="screen" id="screen-campanhas"></div>
+
+      <!-- COMISSÕES -->
+      <div class="screen" id="screen-comissoes"></div>
+
+      <!-- PRAZO ENTREGA -->
+      <div class="screen" id="screen-prazo"></div>
+
+      <!-- CONFIG -->
+      <div class="screen" id="screen-config"></div>
+
+    </main>
+  </div><!-- /main-content -->
+
+</div><!-- /app -->
+
+<!-- ══════════════════════════════════
+     MODALS
+══════════════════════════════════ -->
+
+<!-- Lead Detail Modal -->
+<div class="modal-overlay" id="overlay-lead">
+  <div class="modal modal-lg" id="modal-lead"></div>
+</div>
+
+<!-- Generic Modal -->
+<div class="modal-overlay" id="overlay-generic">
+  <div class="modal" id="modal-generic"></div>
+</div>
+
+<!-- ══════════════════════════════════
+     TOAST CONTAINER
+══════════════════════════════════ -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- ══════════════════════════════════
+     SCRIPTS
+══════════════════════════════════ -->
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
