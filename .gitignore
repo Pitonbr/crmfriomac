@@ -1,4 +1,90 @@
-.claude/
+# ════════════════════════════════════════════════════════════════
+#  Friomac CRM — .gitignore (monorepo)
+# ════════════════════════════════════════════════════════════════
+
+# ── OS / Editor ─────────────────────────────────────────────────
 .DS_Store
 **/.DS_Store
 Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.shared.json
+*.swp
+*.swo
+*~
+
+# ── Claude / agents ─────────────────────────────────────────────
+.claude/
+
+# ── Segredos e config local ─────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+secrets/
+credentials/
+
+# ── Python / backend ────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.nox/
+.venv/
+venv/
+env/
+.python-version
+dist/
+build/
+*.so
+.hypothesis/
+
+# ── Node / frontend ─────────────────────────────────────────────
+node_modules/
+.pnpm-store/
+.yarn/
+.npm/
+frontend/dist/
+frontend/.vite/
+frontend/.turbo/
+frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/
+frontend/playwright/.cache/
+frontend/.eslintcache
+frontend/storybook-static/
+
+# ── Docker / Infra ──────────────────────────────────────────────
+*.tar
+docker-compose.override.yml
+infra/local/
+
+# ── Backups / dumps / logs ──────────────────────────────────────
+*.dump
+*.dump.gz
+*.sql.gz
+*.bak
+*.log
+logs/
+backups/
+
+# ── Dados sensíveis / fixtures de produção ──────────────────────
+data/production/
+fixtures/production/
+*.production.json
+
+# ── Arquivos temporários do plano (não publicar) ────────────────
+*.draft.md
+WIP-*.md
