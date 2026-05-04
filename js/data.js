@@ -5,13 +5,36 @@
 
 const FriomacData = (function() {
 
-  // ── USUÁRIOS DO SISTEMA ──────────────────────────────
-  const USERS = [
-    { id: 'u1', nome: 'Administrador', email: 'admin@friomac.ind.br', senha: 'admin123', role: 'master', avatar: 'AD', grupo: 'Gestão' },
-    { id: 'u2', nome: 'Caio Victor Volpiano', email: 'caio@friomac.ind.br', senha: '123456', role: 'vendedor', avatar: 'CV', grupo: 'Canal Próprio' },
-    { id: 'u3', nome: 'Felipe Crescente', email: 'felipe@friomac.ind.br', senha: '123456', role: 'vendedor', avatar: 'FC', grupo: 'Canal Próprio' },
-    { id: 'u4', nome: 'Lauriberto Volpiano', email: 'lauriberto@friomac.ind.br', senha: '123456', role: 'representante', avatar: 'LV', grupo: 'Representantes' },
-    { id: 'u5', nome: 'Pedro Gallucci', email: 'pedro@friomac.ind.br', senha: '123456', role: 'vendedor', avatar: 'PG', grupo: 'Canal Próprio' },
+  // ── MENUS & PERMISSÕES BASE ──────────────────────────
+  const ALL_MENUS  = ['dashboard','kanban','orcamentos','clientes','vendedores','campanhas','comissoes','prazo','config'];
+  const ALL_EDIT   = Object.fromEntries(ALL_MENUS.map(m => [m,'edicao']));
+  const MENU_LABELS = [
+    { id:'dashboard',  label:'Dashboard' },
+    { id:'kanban',     label:'Gestão de Leads' },
+    { id:'orcamentos', label:'Orçamentos' },
+    { id:'clientes',   label:'Clientes' },
+    { id:'vendedores', label:'Vendedores & Representantes' },
+    { id:'campanhas',  label:'Campanhas & Mídias' },
+    { id:'comissoes',  label:'Comissões' },
+    { id:'prazo',      label:'Prazo de Entrega' },
+  ];
+
+  const CARGOS = ['Sócio Administrador','Gerente Comercial','Gerente Financeiro','Vendedor','Representante','Administrativo','Financeiro','Marketing','Técnico','Outro'];
+  const ROLE_LABELS = { master:'ADM Master', adm_geral:'ADM Geral', vendedor:'Vendedor', representante:'Representante', administrativo:'Administrativo', financeiro:'Financeiro' };
+
+  // ── USUÁRIOS — SEED INICIAL ──────────────────────────
+  const _VEND_MENUS = ['dashboard','kanban','orcamentos','clientes','comissoes'];
+  const _VEND_ACESSO = { dashboard:'visualizacao', kanban:'edicao', orcamentos:'edicao', clientes:'visualizacao', comissoes:'visualizacao' };
+  const _REP_MENUS  = ['dashboard','kanban','clientes'];
+  const _REP_ACESSO  = { dashboard:'visualizacao', kanban:'edicao', clientes:'visualizacao' };
+
+  const USERS_SEED = [
+    { id:'u_master1', nome:'Alex Piton',              cargo:'Sócio Administrador', email:'admin@friomac.ind.br',     telefone:'', login:'alex.piton',        senha:'Friomac@1', role:'master',       avatar:'AP', grupo:'Gestão',        menuPermissoes:ALL_MENUS, tipoAcesso:{...ALL_EDIT}, ativo:true, senhaTemporaria:false, dataCadastro:'2026-04-28', criadoPor:null },
+    { id:'u_master2', nome:'Ale Munoz',               cargo:'Sócio Administrador', email:'alemunoz@uol.com.br',      telefone:'', login:'ale.munoz',         senha:'Friomac@2', role:'master',       avatar:'AM', grupo:'Gestão',        menuPermissoes:ALL_MENUS, tipoAcesso:{...ALL_EDIT}, ativo:true, senhaTemporaria:false, dataCadastro:'2026-04-28', criadoPor:null },
+    { id:'u2', nome:'Caio Victor Volpiano',           cargo:'Vendedor',            email:'caio@friomac.ind.br',      telefone:'(11) 99999-0001', login:'caio.victor',     senha:'123456', role:'vendedor',     avatar:'CV', grupo:'Canal Próprio', menuPermissoes:_VEND_MENUS, tipoAcesso:{..._VEND_ACESSO}, ativo:true, senhaTemporaria:true, dataCadastro:'2026-04-28', criadoPor:'u_master1' },
+    { id:'u3', nome:'Felipe Crescente Alves Maciel', cargo:'Vendedor',            email:'felipe@friomac.ind.br',    telefone:'(11) 99999-0002', login:'felipe.crescente', senha:'123456', role:'vendedor',     avatar:'FC', grupo:'Canal Próprio', menuPermissoes:_VEND_MENUS, tipoAcesso:{..._VEND_ACESSO}, ativo:true, senhaTemporaria:true, dataCadastro:'2026-04-28', criadoPor:'u_master1' },
+    { id:'u4', nome:'Lauriberto Volpiano',            cargo:'Representante',       email:'lauriberto@friomac.ind.br',telefone:'', login:'lauriberto.volpiano',senha:'123456', role:'representante',avatar:'LV', grupo:'Representantes', menuPermissoes:_REP_MENUS, tipoAcesso:{..._REP_ACESSO}, ativo:true, senhaTemporaria:true, dataCadastro:'2026-04-28', criadoPor:'u_master1' },
+    { id:'u5', nome:'Pedro Taconelli Gallucci',       cargo:'Vendedor',            email:'pedro@friomac.ind.br',     telefone:'', login:'pedro.gallucci',    senha:'123456', role:'vendedor',     avatar:'PG', grupo:'Canal Próprio', menuPermissoes:_VEND_MENUS, tipoAcesso:{..._VEND_ACESSO}, ativo:true, senhaTemporaria:true, dataCadastro:'2026-04-28', criadoPor:'u_master1' },
   ];
 
   // ── ESTÁGIOS DO FUNIL ────────────────────────────────
@@ -148,6 +171,8 @@ const FriomacData = (function() {
   // ── STATE / STORE ────────────────────────────────────
   let _state = {
     currentUser: null,
+    users: [],
+    resetRequests: [],
     leads: [],
     reps: [],
     clientes: [],
@@ -160,11 +185,23 @@ const FriomacData = (function() {
     comunicados: [],
   };
 
+  function _seedUsers() {
+    return USERS_SEED.map(u => ({...u, menuPermissoes:[...u.menuPermissoes], tipoAcesso:{...u.tipoAcesso}}));
+  }
+
   function _loadFromStorage() {
     try {
       const saved = localStorage.getItem('friomac_crm_data');
       if (saved) {
         const data = JSON.parse(saved);
+        // Migrate users: se não tem campo 'login' é formato antigo, ressemeiar
+        const stored = data.users;
+        if (stored && stored.length > 0 && stored.some(u => u.login)) {
+          _state.users = stored;
+        } else {
+          _state.users = _seedUsers();
+        }
+        _state.resetRequests  = data.resetRequests  || [];
         _state.leads          = data.leads          || [...LEADS_BASE.map(l => ({...l}))];
         _state.reps           = data.reps           || [...REPS_BASE.map(r => ({...r}))];
         _state.clientes       = data.clientes       || _buildClientesFromLeads();
@@ -176,14 +213,18 @@ const FriomacData = (function() {
         _state.repositorioMkt = data.repositorioMkt || [];
         _state.comunicados    = data.comunicados    || [];
       } else {
-        _state.leads     = [...LEADS_BASE.map(l => ({...l}))];
-        _state.reps      = [...REPS_BASE.map(r => ({...r}))];
-        _state.clientes  = _buildClientesFromLeads();
-        _state.comissoes = [];
-        _state.entregas  = [];
-        _state.orcamentos = [];
+        _state.users         = _seedUsers();
+        _state.resetRequests = [];
+        _state.leads         = [...LEADS_BASE.map(l => ({...l}))];
+        _state.reps          = [...REPS_BASE.map(r => ({...r}))];
+        _state.clientes      = _buildClientesFromLeads();
+        _state.comissoes     = [];
+        _state.entregas      = [];
+        _state.orcamentos    = [];
       }
     } catch(e) {
+      _state.users           = _seedUsers();
+      _state.resetRequests   = [];
       _state.leads           = [...LEADS_BASE.map(l => ({...l}))];
       _state.reps            = [...REPS_BASE.map(r => ({...r}))];
       _state.clientes        = _buildClientesFromLeads();
@@ -200,6 +241,8 @@ const FriomacData = (function() {
   function _saveToStorage() {
     try {
       localStorage.setItem('friomac_crm_data', JSON.stringify({
+        users:           _state.users,
+        resetRequests:   _state.resetRequests,
         leads:           _state.leads,
         reps:            _state.reps,
         clientes:        _state.clientes,
@@ -247,15 +290,124 @@ const FriomacData = (function() {
   return {
     init() { _loadFromStorage(); },
 
-    // Auth
-    login(email, senha) {
-      const u = USERS.find(u => u.email.toLowerCase() === email.toLowerCase() && u.senha === senha);
+    // ── AUTH ─────────────────────────────────────────
+    login(identifier, senha) {
+      const id = (identifier||'').toLowerCase().trim();
+      const u = _state.users.find(u =>
+        u.ativo &&
+        ((u.email||'').toLowerCase() === id || (u.login||'').toLowerCase() === id) &&
+        u.senha === senha
+      );
       if (u) { _state.currentUser = u; return u; }
       return null;
     },
-    logout()  { _state.currentUser = null; },
-    getUser() { return _state.currentUser; },
-    getUsers(){ return USERS; },
+    logout()        { _state.currentUser = null; },
+    getUser()       { return _state.currentUser; },
+    getUsers()      { return [..._state.users]; },
+
+    // ── USER MANAGEMENT ──────────────────────────────
+    getSystemUsers()    { return [..._state.users]; },
+    getUserById(id)     { return _state.users.find(u => u.id === id); },
+    getMenuLabels()     { return MENU_LABELS; },
+    getRoleLabels()     { return ROLE_LABELS; },
+    getCargos()         { return CARGOS; },
+
+    addSystemUser(data) {
+      const u = {
+        id: 'u_' + Date.now(),
+        ativo: true,
+        senhaTemporaria: true,
+        dataCadastro: new Date().toISOString().split('T')[0],
+        menuPermissoes: [],
+        tipoAcesso: {},
+        grupo: 'Equipe',
+        ...data,
+        avatar: this.getInitials(data.nome),
+      };
+      _state.users.push(u);
+      _saveToStorage();
+      return u;
+    },
+
+    updateSystemUser(id, updates) {
+      const idx = _state.users.findIndex(u => u.id === id);
+      if (idx >= 0) {
+        _state.users[idx] = { ..._state.users[idx], ...updates };
+        _saveToStorage();
+        return _state.users[idx];
+      }
+      return null;
+    },
+
+    deleteSystemUser(id) {
+      _state.users = _state.users.filter(u => u.id !== id);
+      _saveToStorage();
+    },
+
+    changeUserPassword(id, novaSenha, isTemp = false) {
+      return this.updateSystemUser(id, { senha: novaSenha, senhaTemporaria: isTemp });
+    },
+
+    // ── RESET REQUESTS ──────────────────────────────
+    addResetRequest(data) {
+      const req = {
+        id: 'rreq_' + Date.now(),
+        dataSolicita: new Date().toISOString().split('T')[0],
+        status: 'pendente',
+        ...data,
+      };
+      _state.resetRequests.push(req);
+      _saveToStorage();
+      return req;
+    },
+
+    getResetRequests() { return [..._state.resetRequests]; },
+
+    resolveResetRequest(reqId, novaSenha, aprovadoPorId) {
+      const req = _state.resetRequests.find(r => r.id === reqId);
+      if (!req) return;
+      this.changeUserPassword(req.userId, novaSenha, true);
+      const idx = _state.resetRequests.findIndex(r => r.id === reqId);
+      if (idx >= 0) {
+        _state.resetRequests[idx] = { ..._state.resetRequests[idx], status:'aprovado', aprovadoPor:aprovadoPorId, dataResolucao: new Date().toISOString().split('T')[0] };
+        _saveToStorage();
+      }
+    },
+
+    rejectResetRequest(reqId, aprovadoPorId) {
+      const idx = _state.resetRequests.findIndex(r => r.id === reqId);
+      if (idx >= 0) {
+        _state.resetRequests[idx] = { ..._state.resetRequests[idx], status:'rejeitado', aprovadoPor:aprovadoPorId, dataResolucao: new Date().toISOString().split('T')[0] };
+        _saveToStorage();
+      }
+    },
+
+    // ── UTILITIES ──────────────────────────────────
+    generateLogin(nome) {
+      const parts = (nome||'').trim()
+        .toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g,'')
+        .replace(/[^a-z0-9\s]/g,'')
+        .split(/\s+/).filter(Boolean);
+      return parts.length >= 2 ? parts[0]+'.'+parts[1] : (parts[0]||'usuario');
+    },
+
+    generatePassword() {
+      const s  = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+      const sp = '@#!$';
+      const base = Array.from({length:8}, ()=>s[Math.floor(Math.random()*s.length)]).join('');
+      return base + sp[Math.floor(Math.random()*sp.length)] + (Math.floor(Math.random()*9)+1);
+    },
+
+    checkPermission(screen) {
+      const u = _state.currentUser;
+      if (!u || !u.ativo) return { access:false, edit:false };
+      if (u.role === 'master')    return { access:true, edit:true };
+      if (u.role === 'adm_geral') return { access:true, edit:true };
+      if (screen === 'config')    return { access:false, edit:false };
+      const ok = (u.menuPermissoes||[]).includes(screen);
+      return { access:ok, edit:ok && (u.tipoAcesso||{})[screen]==='edicao' };
+    },
 
     // Leads
     getLeads(filters = {}) {

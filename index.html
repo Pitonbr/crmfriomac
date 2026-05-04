@@ -34,8 +34,8 @@
 
     <form class="login-form" id="login-form" autocomplete="off">
       <div>
-        <label for="login-email">Email</label>
-        <input type="email" id="login-email" placeholder="seu@email.com" autocomplete="username">
+        <label for="login-email">Login ou E-mail</label>
+        <input type="text" id="login-email" placeholder="seu.login ou email@..." autocomplete="username">
       </div>
       <div>
         <label for="login-senha">Senha</label>
@@ -44,19 +44,21 @@
       <button type="submit" class="btn-login">Entrar no Sistema</button>
     </form>
 
-    <p class="login-hint">Acesso rápido (demonstração):</p>
+    <div style="text-align:center;margin-top:10px">
+      <button id="btn-forgot-password" style="background:none;border:none;color:var(--primary,#0EA5E9);font-size:.8rem;cursor:pointer;text-decoration:underline;padding:4px">
+        Esqueci minha senha
+      </button>
+    </div>
+
+    <p class="login-hint">Acesso rápido:</p>
     <div class="login-users">
-      <button class="login-user-btn" data-email="admin@friomac.ind.br">
-        <span class="u-role">Admin</span>
-        Administrador
+      <button class="login-user-btn" data-email="alex.piton">
+        <span class="u-role" style="background:#dc2626">Master</span>
+        Alex Piton
       </button>
-      <button class="login-user-btn" data-email="caio@friomac.ind.br">
-        <span class="u-role">Vendedor</span>
-        Caio Victor
-      </button>
-      <button class="login-user-btn" data-email="lauriberto@friomac.ind.br">
-        <span class="u-role">Representante</span>
-        Lauriberto
+      <button class="login-user-btn" data-email="ale.munoz">
+        <span class="u-role" style="background:#dc2626">Master</span>
+        Ale Munoz
       </button>
     </div>
   </div>

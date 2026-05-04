@@ -35,23 +35,27 @@ const App = (function() {
 
   function handleLogin(e) {
     e.preventDefault();
-    const email = document.getElementById('login-email').value.trim();
-    const senha = document.getElementById('login-senha').value;
-    if (!email || !senha) { toast('Preencha email e senha.', 'warning'); return; }
-    const user = FriomacData.login(email, senha);
+    const identifier = document.getElementById('login-email').value.trim();
+    const senha      = document.getElementById('login-senha').value;
+    if (!identifier || !senha) { toast('Preencha login e senha.', 'warning'); return; }
+    const user = FriomacData.login(identifier, senha);
     if (user) {
       hideLogin();
       updateUserUI(user);
       navigateTo('dashboard');
       toast(`Bem-vindo, ${user.nome.split(' ')[0]}!`, 'success');
+      if (user.senhaTemporaria) {
+        setTimeout(() => openChangePasswordModal(user.id, true), 900);
+      }
     } else {
-      toast('Email ou senha incorretos.', 'error');
+      toast('Login ou senha incorretos.', 'error');
     }
   }
 
-  function quickLogin(email) {
-    document.getElementById('login-email').value = email;
-    document.getElementById('login-senha').value = email === 'admin@friomac.ind.br' ? 'admin123' : '123456';
+  function quickLogin(login) {
+    document.getElementById('login-email').value = login;
+    const map = { 'alex.piton':'Friomac@1', 'ale.munoz':'Friomac@2' };
+    document.getElementById('login-senha').value = map[login] || '';
   }
 
   function handleLogout() {
@@ -65,8 +69,21 @@ const App = (function() {
     if (!u) return;
     document.querySelectorAll('.user-avatar').forEach(el => el.textContent = u.avatar || FriomacData.getInitials(u.nome));
     document.querySelectorAll('.user-name').forEach(el => el.textContent = u.nome.split(' ').slice(0,2).join(' '));
-    document.querySelectorAll('.user-role').forEach(el => el.textContent = { master: 'Administrador', vendedor: 'Vendedor', representante: 'Representante' }[u.role] || u.role);
+    const roleMap = FriomacData.getRoleLabels();
+    document.querySelectorAll('.user-role').forEach(el => el.textContent = roleMap[u.role] || u.role);
     document.querySelectorAll('.header-user-name').forEach(el => el.textContent = u.nome.split(' ')[0]);
+    _filterNavByPermission(u);
+  }
+
+  function _filterNavByPermission(user) {
+    document.querySelectorAll('.nav-item[data-screen]').forEach(item => {
+      const perm = FriomacData.checkPermission(item.dataset.screen);
+      item.style.display = perm.access ? '' : 'none';
+    });
+  }
+
+  function _canEdit(screen) {
+    return FriomacData.checkPermission(screen).edit;
   }
 
   // ── NAVIGATION ─────────────────────────────────────
@@ -2947,101 +2964,178 @@ const App = (function() {
   // ══════════════════════════════════════════════════
   // CONFIG
   // ══════════════════════════════════════════════════
-  function renderConfig() {
-    document.getElementById('screen-config').innerHTML = `
-    <div class="tab-bar">
-      <button class="tab-btn active">⚙️ Geral</button>
-      <button class="tab-btn">🔗 Integrações</button>
-      <button class="tab-btn">👥 Usuários</button>
-      <button class="tab-btn">🔔 Alertas</button>
-    </div>
+  let _configTab = 'usuarios';
 
+  function renderConfig() {
+    const user = FriomacData.getUser();
+    if (!user || (user.role !== 'master' && user.role !== 'adm_geral')) {
+      document.getElementById('screen-config').innerHTML = `
+        <div class="empty-state" style="padding:60px">
+          <div style="font-size:2.5rem;margin-bottom:16px">🔒</div>
+          <p style="font-size:1rem">Acesso restrito — apenas administradores.</p>
+        </div>`;
+      return;
+    }
+    const pending = FriomacData.getResetRequests().filter(r => r.status === 'pendente').length;
+    document.getElementById('screen-config').innerHTML = `
+    <div class="tab-bar" style="margin-bottom:20px">
+      <button class="tab-btn ${_configTab==='usuarios'?'active':''}" onclick="App.switchConfigTab('usuarios')">Usuários do Sistema</button>
+      <button class="tab-btn ${_configTab==='solicitacoes'?'active':''}" onclick="App.switchConfigTab('solicitacoes')">
+        Solicitações${pending>0?` <span class="nav-badge" style="position:static;transform:none;display:inline-flex;margin-left:6px">${pending}</span>`:''}
+      </button>
+      <button class="tab-btn ${_configTab==='sistema'?'active':''}" onclick="App.switchConfigTab('sistema')">Sistema & Alertas</button>
+    </div>
+    <div id="config-tab-content"></div>`;
+    _renderConfigTab();
+  }
+
+  function switchConfigTab(tab) { _configTab = tab; renderConfig(); }
+
+  function _renderConfigTab() {
+    const el = document.getElementById('config-tab-content');
+    if (!el) return;
+    if (_configTab === 'usuarios')     el.innerHTML = _buildConfigUsuarios();
+    if (_configTab === 'solicitacoes') el.innerHTML = _buildConfigSolicitacoes();
+    if (_configTab === 'sistema')      el.innerHTML = _buildConfigSistema();
+  }
+
+  // ── TAB USUÁRIOS ────────────────────────────────────
+  function _buildConfigUsuarios() {
+    const me   = FriomacData.getUser();
+    const users = FriomacData.getSystemUsers();
+    const isMaster = me.role === 'master';
+    const roleBadge = { master:'badge-danger', adm_geral:'badge-warning', vendedor:'badge-primary', representante:'badge-purple', administrativo:'badge-gray', financeiro:'badge-success' };
+    const roleLabels = FriomacData.getRoleLabels();
+
+    return `
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Usuários do Sistema</div>
+        <button class="btn btn-accent btn-sm" onclick="App.openCreateUserModal()">+ Novo Usuário</button>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>Usuário</th><th>Login</th><th>Cargo</th><th>Perfil</th><th>Menus</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody>
+            ${users.map(u => `
+            <tr style="${!u.ativo?'opacity:.5':''}">
+              <td><div style="display:flex;align-items:center;gap:10px">
+                <div class="user-avatar" style="width:32px;height:32px;font-size:.75rem;background:${u.role==='master'?'var(--danger)':u.role==='adm_geral'?'var(--warning)':'var(--primary)'}">
+                  ${u.avatar||FriomacData.getInitials(u.nome)}
+                </div>
+                <div>
+                  <strong>${u.nome}</strong>
+                  <div style="font-size:.74rem;color:var(--text-3)">${u.email}</div>
+                </div>
+              </div></td>
+              <td style="font-family:monospace;font-size:.82rem">${u.login||'—'}</td>
+              <td style="font-size:.82rem">${u.cargo||'—'}</td>
+              <td><span class="badge ${roleBadge[u.role]||'badge-gray'}">${roleLabels[u.role]||u.role}</span></td>
+              <td style="font-size:.78rem;color:var(--text-3)">${(u.menuPermissoes||[]).length} menus</td>
+              <td>
+                <span class="badge ${u.ativo?'badge-success':'badge-danger'}">${u.ativo?'Ativo':'Inativo'}</span>
+                ${u.senhaTemporaria?'<span class="badge badge-warning" style="margin-left:4px;font-size:.68rem">Senha temp.</span>':''}
+              </td>
+              <td>
+                <div style="display:flex;gap:5px;flex-wrap:wrap">
+                  <button class="btn btn-ghost btn-sm" onclick="App.openEditUserModal('${u.id}')">Editar</button>
+                  ${u.id !== me.id ? `<button class="btn btn-ghost btn-sm" onclick="App.toggleUserActive('${u.id}',${u.ativo})">${u.ativo?'Inativar':'Ativar'}</button>` : ''}
+                  ${isMaster && u.id !== me.id && u.role !== 'master' ? `<button class="btn btn-danger btn-sm" onclick="App.confirmDeleteUser('${u.id}','${u.nome.replace(/'/g,'\\\'').split(' ')[0]}')">Excluir</button>` : ''}
+                </div>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  // ── TAB SOLICITAÇÕES ────────────────────────────────
+  function _buildConfigSolicitacoes() {
+    const me       = FriomacData.getUser();
+    const requests = FriomacData.getResetRequests();
+    const pending  = requests.filter(r => r.status === 'pendente');
+    const resolved = requests.filter(r => r.status !== 'pendente');
+
+    const buildRow = (r, isPending) => {
+      const u = FriomacData.getUserById(r.userId);
+      const statusBadge = { pendente:'badge-warning', aprovado:'badge-success', rejeitado:'badge-danger' };
+      return `
+      <tr>
+        <td><strong>${u ? u.nome : r.userId}</strong><div style="font-size:.74rem;color:var(--text-3)">${u ? u.login : '—'}</div></td>
+        <td style="font-size:.82rem">${r.motivo||'Sem motivo informado'}</td>
+        <td style="font-size:.82rem">${r.dataSolicita||'—'}</td>
+        <td><span class="badge ${statusBadge[r.status]||'badge-gray'}">${r.status}</span></td>
+        <td>
+          ${isPending ? `
+          <div style="display:flex;gap:5px">
+            <button class="btn btn-accent btn-sm" onclick="App.openApproveResetModal('${r.id}','${(u?.nome||'').replace(/'/g,'\\\'').split(' ')[0]}')">Aprovar</button>
+            <button class="btn btn-ghost btn-sm" onclick="App.rejectReset('${r.id}')">Rejeitar</button>
+          </div>` : `<span style="font-size:.78rem;color:var(--text-3)">${r.dataResolucao||'—'}</span>`}
+        </td>
+      </tr>`;
+    };
+
+    return `
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header">
+        <div class="card-title">Solicitações de Redefinição de Senha</div>
+        <span class="badge badge-warning">${pending.length} pendente(s)</span>
+      </div>
+      ${pending.length === 0 && resolved.length === 0 ? `
+        <div class="card-body" style="text-align:center;color:var(--text-3);padding:30px">Nenhuma solicitação registrada.</div>
+      ` : `
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>Usuário</th><th>Motivo</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody>
+            ${pending.map(r => buildRow(r, true)).join('')}
+            ${resolved.map(r => buildRow(r, false)).join('')}
+          </tbody>
+        </table>
+      </div>`}
+    </div>`;
+  }
+
+  // ── TAB SISTEMA ─────────────────────────────────────
+  function _buildConfigSistema() {
+    return `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-      <!-- SISTEMA -->
       <div class="card">
-        <div class="card-header"><div class="card-title">⚙️ Configurações do Sistema</div></div>
+        <div class="card-header"><div class="card-title">Configurações do Sistema</div></div>
         <div class="card-body">
           <div class="form-group"><label class="form-label">Nome da Empresa</label><input class="form-control" value="Friomac Indústria e Comércio de Refrigeração"></div>
           <div class="form-group"><label class="form-label">Meta Anual (R$)</label><input class="form-control" type="number" value="12000000"></div>
           <div class="form-group"><label class="form-label">Taxa de Conversão Meta (%)</label><input class="form-control" type="number" value="35"></div>
           <div class="form-group"><label class="form-label">Ticket Médio Meta (R$)</label><input class="form-control" type="number" value="130000"></div>
           <div style="display:flex;gap:10px;margin-top:16px">
-            <button class="btn btn-accent" onclick="App.toast('Configurações salvas!','success')">Salvar configurações</button>
-            <button class="btn btn-danger btn-sm" onclick="if(confirm('Resetar todos os dados?')){FriomacData.resetData();App.toast('Dados resetados!','warning');App.renderScreen('dashboard')}">Reset dados</button>
+            <button class="btn btn-accent" onclick="App.toast('Configurações salvas!','success')">Salvar</button>
+            <button class="btn btn-danger btn-sm" onclick="if(confirm('Resetar todos os dados operacionais?')){FriomacData.resetData();App.toast('Dados resetados!','warning');App.renderScreen('dashboard')}">Reset dados</button>
           </div>
         </div>
       </div>
-
-      <!-- INTEGRAÇÕES -->
       <div class="card">
-        <div class="card-header"><div class="card-title">🔗 Integrações & APIs</div></div>
+        <div class="card-header"><div class="card-title">Integrações & APIs</div></div>
         <div class="card-body">
           <div class="integration-grid" style="grid-template-columns:1fr 1fr">
-            ${[
-              { icon:'📸', nome:'Instagram', desc:'Leads via DM', color:'#E1306C' },
-              { icon:'💬', nome:'WhatsApp',  desc:'Business API', color:'#25D366' },
-              { icon:'📘', nome:'Facebook',  desc:'Leads Ads',    color:'#1877F2' },
-              { icon:'🔍', nome:'Google Ads', desc:'Conversões',  color:'#4285F4' },
-              { icon:'📧', nome:'Email',     desc:'SMTP/IMAP',    color:'#EA4335' },
-              { icon:'📊', nome:'RD Station', desc:'Marketing',   color:'#00BFA5' },
-            ].map(i=>`
+            ${[{icon:'📸',nome:'Instagram',desc:'Leads via DM',color:'#E1306C'},{icon:'💬',nome:'WhatsApp',desc:'Business API',color:'#25D366'},{icon:'📘',nome:'Facebook',desc:'Leads Ads',color:'#1877F2'},{icon:'🔍',nome:'Google Ads',desc:'Conversões',color:'#4285F4'},{icon:'📧',nome:'Email',desc:'SMTP/IMAP',color:'#EA4335'},{icon:'📊',nome:'RD Station',desc:'Marketing',color:'#00BFA5'}].map(i=>`
             <div class="integration-card">
-              <div class="integration-icon" style="background:${i.color}20;font-size:1.6rem">${i.icon}</div>
-              <h4>${i.nome}</h4>
-              <p>${i.desc}</p>
+              <div class="integration-icon" style="background:${i.color}20;font-size:1.5rem">${i.icon}</div>
+              <h4>${i.nome}</h4><p>${i.desc}</p>
               <div class="toggle-wrap" style="justify-content:center">
                 <label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label>
                 <span style="font-size:.75rem;color:var(--text-3)">Ativo</span>
               </div>
             </div>`).join('')}
           </div>
-          <div style="margin-top:16px">
-            <label class="form-label">API Key (Integração)</label>
-            <input class="form-control" type="password" value="••••••••••••••••••••••••••••••••" readonly>
-          </div>
-          <div style="margin-top:10px">
-            <label class="form-label">Webhook URL (receber leads)</label>
-            <input class="form-control" value="https://crm.friomac.ind.br/api/leads/webhook" readonly>
-          </div>
         </div>
       </div>
     </div>
-
-    <!-- USUÁRIOS -->
     <div class="card" style="margin-top:20px">
-      <div class="card-header"><div class="card-title">👥 Usuários do Sistema</div><button class="btn btn-accent btn-sm">+ Novo Usuário</button></div>
-      <div class="table-wrapper">
-        <table>
-          <thead><tr><th>Nome</th><th>Email</th><th>Perfil</th><th>Grupo</th><th>Status</th><th>Ações</th></tr></thead>
-          <tbody>
-            ${FriomacData.getUsers().map(u=>`
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:10px">
-                <div class="user-avatar" style="width:28px;height:28px;font-size:.72rem">${u.avatar}</div>
-                <strong>${u.nome}</strong>
-              </div></td>
-              <td style="font-size:.82rem">${u.email}</td>
-              <td><span class="badge ${u.role==='master'?'badge-danger':u.role==='vendedor'?'badge-primary':'badge-purple'}">${{master:'Administrador',vendedor:'Vendedor',representante:'Representante'}[u.role]}</span></td>
-              <td style="font-size:.82rem">${u.grupo}</td>
-              <td><span class="badge badge-success">Ativo</span></td>
-              <td><button class="btn btn-ghost btn-sm">Editar</button></td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ALERTAS SLA -->
-    <div class="card" style="margin-top:20px">
-      <div class="card-header"><div class="card-title">🔔 Configurações de Alertas</div></div>
+      <div class="card-header"><div class="card-title">Configurações de Alertas SLA</div></div>
       <div class="card-body">
         <div class="form-row">
-          ${[
-            { label:'SLA Contato Recebido', desc:'Alerta após 2h sem resposta', val:'2' },
-            { label:'SLA Visita In Loco', desc:'Alerta após 72h sem agendamento', val:'72' },
-            { label:'SLA Orçamento', desc:'Alerta após 24h sem envio', val:'24' },
-            { label:'Lead sem atividade', desc:'Alerta após N dias parado', val:'7' },
-          ].map(a=>`
+          ${[{label:'SLA Contato Recebido',desc:'Após 2h sem resposta',val:'2'},{label:'SLA Visita In Loco',desc:'Após 72h sem agendamento',val:'72'},{label:'SLA Orçamento',desc:'Após 24h sem envio',val:'24'},{label:'Lead sem atividade',desc:'Após N dias parado',val:'7'}].map(a=>`
           <div class="form-group">
             <label class="form-label">${a.label}</label>
             <div style="display:flex;gap:8px;align-items:center">
@@ -3053,6 +3147,449 @@ const App = (function() {
         <button class="btn btn-accent" onclick="App.toast('Alertas salvos!','success')">Salvar alertas</button>
       </div>
     </div>`;
+  }
+
+  // ── MODAL: CRIAR USUÁRIO ────────────────────────────
+  function openCreateUserModal() {
+    const me = FriomacData.getUser();
+    const menus = FriomacData.getMenuLabels();
+    const cargos = FriomacData.getCargos();
+    const genPass = FriomacData.generatePassword();
+    const isMaster = me.role === 'master';
+
+    document.getElementById('modal-generic').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">Novo Usuário</div>
+      <button class="btn-close" onclick="App.closeModal('overlay-generic')">✕</button>
+    </div>
+    <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <label class="form-label">Nome Completo *</label>
+          <input class="form-control" id="nu-nome" placeholder="Ex: João da Silva"
+            oninput="document.getElementById('nu-login').value=FriomacData.generateLogin(this.value)">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cargo *</label>
+          <select class="form-control" id="nu-cargo">
+            ${cargos.map(c=>`<option>${c}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-control" id="nu-email" type="email" placeholder="email@dominio.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Telefone</label>
+          <input class="form-control" id="nu-tel" placeholder="(00) 00000-0000">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Perfil de Acesso *</label>
+          <select class="form-control" id="nu-role">
+            ${isMaster ? '<option value="adm_geral">ADM Geral</option>' : ''}
+            <option value="vendedor">Vendedor</option>
+            <option value="representante">Representante</option>
+            <option value="administrativo">Administrativo</option>
+            <option value="financeiro">Financeiro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Login de Acesso *</label>
+          <input class="form-control" id="nu-login" placeholder="gerado automaticamente">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Senha Inicial</label>
+        <div style="display:flex;gap:8px">
+          <input class="form-control" id="nu-senha" value="${genPass}" style="font-family:monospace">
+          <button class="btn btn-ghost btn-sm" style="white-space:nowrap"
+            onclick="document.getElementById('nu-senha').value=FriomacData.generatePassword()">Gerar nova</button>
+        </div>
+        <p style="font-size:.75rem;color:var(--warning);margin-top:4px">O usuário deverá alterar esta senha no primeiro acesso.</p>
+      </div>
+
+      <div style="border-top:1px solid var(--border);margin:18px 0;padding-top:18px">
+        <div class="section-title" style="margin-bottom:14px">Permissões de Menu</div>
+        <div style="display:grid;gap:8px" id="nu-menus">
+          ${menus.map(m=>`
+          <div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:8px 12px;background:var(--bg-2);border-radius:6px">
+            <input type="checkbox" id="nu-chk-${m.id}" value="${m.id}" checked>
+            <label for="nu-chk-${m.id}" style="cursor:pointer;font-size:.85rem;font-weight:500">${m.label}</label>
+            <div style="display:flex;gap:14px;font-size:.78rem">
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="radio" name="nu-acesso-${m.id}" value="edicao" checked> Editar
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+                <input type="radio" name="nu-acesso-${m.id}" value="visualizacao"> Visualizar
+              </label>
+            </div>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="App.closeModal('overlay-generic')">Cancelar</button>
+      <button class="btn btn-accent" onclick="App.saveNewUser()">Criar Usuário</button>
+    </div>`;
+    openModal('overlay-generic');
+  }
+
+  function saveNewUser() {
+    const nome  = document.getElementById('nu-nome')?.value.trim();
+    const cargo = document.getElementById('nu-cargo')?.value;
+    const email = document.getElementById('nu-email')?.value.trim();
+    const tel   = document.getElementById('nu-tel')?.value.trim();
+    const role  = document.getElementById('nu-role')?.value;
+    const login = document.getElementById('nu-login')?.value.trim();
+    const senha = document.getElementById('nu-senha')?.value.trim();
+
+    if (!nome || !login || !senha) { toast('Nome, login e senha são obrigatórios.','warning'); return; }
+
+    const menus = FriomacData.getMenuLabels();
+    const menuPermissoes = [];
+    const tipoAcesso = {};
+    menus.forEach(m => {
+      const chk = document.getElementById(`nu-chk-${m.id}`);
+      if (chk?.checked) {
+        menuPermissoes.push(m.id);
+        const tipo = document.querySelector(`input[name="nu-acesso-${m.id}"]:checked`)?.value || 'visualizacao';
+        tipoAcesso[m.id] = tipo;
+      }
+    });
+
+    const me = FriomacData.getUser();
+    FriomacData.addSystemUser({ nome, cargo, email, telefone:tel, role, login, senha, menuPermissoes, tipoAcesso, criadoPor: me.id });
+    closeModal('overlay-generic');
+    toast(`Usuário ${nome.split(' ')[0]} criado! Login: ${login} | Senha: ${senha}`, 'success', 6000);
+    renderConfig();
+  }
+
+  // ── MODAL: EDITAR USUÁRIO ───────────────────────────
+  function openEditUserModal(userId) {
+    const u     = FriomacData.getUserById(userId);
+    if (!u) return;
+    const me    = FriomacData.getUser();
+    const menus = FriomacData.getMenuLabels();
+    const cargos = FriomacData.getCargos();
+    const isMaster = me.role === 'master';
+
+    document.getElementById('modal-generic').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">Editar Usuário — ${u.nome.split(' ')[0]}</div>
+      <button class="btn-close" onclick="App.closeModal('overlay-generic')">✕</button>
+    </div>
+    <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <label class="form-label">Nome Completo</label>
+          <input class="form-control" id="eu-nome" value="${u.nome}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cargo</label>
+          <select class="form-control" id="eu-cargo">
+            ${cargos.map(c=>`<option ${c===u.cargo?'selected':''}>${c}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-control" id="eu-email" type="email" value="${u.email||''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Telefone</label>
+          <input class="form-control" id="eu-tel" value="${u.telefone||''}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Login</label>
+          <input class="form-control" id="eu-login" value="${u.login||''}" ${u.role==='master'&&!isMaster?'readonly':''}>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nova Senha <span style="color:var(--text-3);font-weight:400">(deixar em branco para não alterar)</span></label>
+          <div style="display:flex;gap:8px">
+            <input class="form-control" id="eu-senha" placeholder="••••••••" style="font-family:monospace">
+            <button class="btn btn-ghost btn-sm" style="white-space:nowrap"
+              onclick="document.getElementById('eu-senha').value=FriomacData.generatePassword()">Gerar</button>
+          </div>
+        </div>
+      </div>
+      ${u.id !== me.id && (isMaster || u.role !== 'master') ? `
+      <div class="form-group">
+        <label class="form-label">Perfil de Acesso</label>
+        <select class="form-control" id="eu-role">
+          ${isMaster?'<option value="adm_geral" '+(u.role==='adm_geral'?'selected':'')+'>ADM Geral</option>':''}
+          <option value="vendedor" ${u.role==='vendedor'?'selected':''}>Vendedor</option>
+          <option value="representante" ${u.role==='representante'?'selected':''}>Representante</option>
+          <option value="administrativo" ${u.role==='administrativo'?'selected':''}>Administrativo</option>
+          <option value="financeiro" ${u.role==='financeiro'?'selected':''}>Financeiro</option>
+        </select>
+      </div>` : `<input type="hidden" id="eu-role" value="${u.role}">`}
+
+      <div style="border-top:1px solid var(--border);margin:18px 0;padding-top:18px">
+        <div class="section-title" style="margin-bottom:14px">Permissões de Menu</div>
+        <div style="display:grid;gap:8px">
+          ${menus.map(m=>{
+            const hasMenu = (u.menuPermissoes||[]).includes(m.id);
+            const tipo    = (u.tipoAcesso||{})[m.id] || 'visualizacao';
+            return `
+            <div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:8px 12px;background:var(--bg-2);border-radius:6px">
+              <input type="checkbox" id="eu-chk-${m.id}" value="${m.id}" ${hasMenu?'checked':''}>
+              <label for="eu-chk-${m.id}" style="cursor:pointer;font-size:.85rem;font-weight:500">${m.label}</label>
+              <div style="display:flex;gap:14px;font-size:.78rem">
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+                  <input type="radio" name="eu-acesso-${m.id}" value="edicao" ${tipo==='edicao'?'checked':''}> Editar
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+                  <input type="radio" name="eu-acesso-${m.id}" value="visualizacao" ${tipo==='visualizacao'?'checked':''}> Visualizar
+                </label>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="App.closeModal('overlay-generic')">Cancelar</button>
+      <button class="btn btn-accent" onclick="App.saveEditUser('${userId}')">Salvar Alterações</button>
+    </div>`;
+    openModal('overlay-generic');
+  }
+
+  function saveEditUser(userId) {
+    const nome  = document.getElementById('eu-nome')?.value.trim();
+    const cargo = document.getElementById('eu-cargo')?.value;
+    const email = document.getElementById('eu-email')?.value.trim();
+    const tel   = document.getElementById('eu-tel')?.value.trim();
+    const role  = document.getElementById('eu-role')?.value;
+    const login = document.getElementById('eu-login')?.value.trim();
+    const senha = document.getElementById('eu-senha')?.value.trim();
+    if (!nome || !login) { toast('Nome e login são obrigatórios.','warning'); return; }
+
+    const menus = FriomacData.getMenuLabels();
+    const menuPermissoes = [];
+    const tipoAcesso = {};
+    menus.forEach(m => {
+      const chk = document.getElementById(`eu-chk-${m.id}`);
+      if (chk?.checked) {
+        menuPermissoes.push(m.id);
+        tipoAcesso[m.id] = document.querySelector(`input[name="eu-acesso-${m.id}"]:checked`)?.value || 'visualizacao';
+      }
+    });
+
+    const updates = { nome, cargo, email, telefone:tel, role, login, menuPermissoes, tipoAcesso, avatar: FriomacData.getInitials(nome) };
+    if (senha) { updates.senha = senha; updates.senhaTemporaria = true; }
+    FriomacData.updateSystemUser(userId, updates);
+
+    const me = FriomacData.getUser();
+    if (userId === me.id) updateUserUI();
+    closeModal('overlay-generic');
+    toast('Usuário atualizado!', 'success');
+    renderConfig();
+  }
+
+  function toggleUserActive(userId, currentAtivo) {
+    FriomacData.updateSystemUser(userId, { ativo: !currentAtivo });
+    renderConfig();
+    toast(currentAtivo ? 'Usuário inativado.' : 'Usuário ativado.', 'info');
+  }
+
+  function confirmDeleteUser(userId, firstName) {
+    const me = FriomacData.getUser();
+    if (me.role !== 'master') { toast('Apenas o ADM Master pode excluir usuários.','error'); return; }
+    document.getElementById('modal-generic').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title" style="color:var(--danger)">Excluir Usuário</div>
+      <button class="btn-close" onclick="App.closeModal('overlay-generic')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p>Tem certeza que deseja excluir permanentemente o usuário <strong>${firstName}</strong>?</p>
+      <p style="color:var(--danger);font-size:.85rem;margin-top:8px">Esta ação não pode ser desfeita.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="App.closeModal('overlay-generic')">Cancelar</button>
+      <button class="btn btn-danger" onclick="App._doDeleteUser('${userId}')">Excluir definitivamente</button>
+    </div>`;
+    openModal('overlay-generic');
+  }
+
+  function _doDeleteUser(userId) {
+    FriomacData.deleteSystemUser(userId);
+    closeModal('overlay-generic');
+    toast('Usuário excluído.', 'success');
+    renderConfig();
+  }
+
+  // ── MODAL: ALTERAR SENHA ────────────────────────────
+  function openChangePasswordModal(userId, isTemporary) {
+    const u = FriomacData.getUserById(userId) || FriomacData.getUser();
+    document.getElementById('modal-generic').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">${isTemporary ? 'Definir Nova Senha' : 'Alterar Senha'}</div>
+      ${!isTemporary ? `<button class="btn-close" onclick="App.closeModal('overlay-generic')">✕</button>` : ''}
+    </div>
+    <div class="modal-body">
+      ${isTemporary ? `<div style="background:var(--warning-bg,#fef3c7);border:1px solid var(--warning);border-radius:6px;padding:12px;margin-bottom:18px;font-size:.85rem;color:var(--warning-dark,#92400e)">
+        Sua senha é temporária. Defina uma nova senha para continuar.
+      </div>` : ''}
+      ${!isTemporary ? `
+      <div class="form-group">
+        <label class="form-label">Senha Atual</label>
+        <input class="form-control" id="cp-atual" type="password" placeholder="••••••••">
+      </div>` : ''}
+      <div class="form-group">
+        <label class="form-label">Nova Senha</label>
+        <input class="form-control" id="cp-nova" type="password" placeholder="mínimo 6 caracteres">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirmar Nova Senha</label>
+        <input class="form-control" id="cp-conf" type="password" placeholder="repita a nova senha">
+      </div>
+    </div>
+    <div class="modal-footer">
+      ${!isTemporary ? `<button class="btn btn-ghost" onclick="App.closeModal('overlay-generic')">Cancelar</button>` : ''}
+      <button class="btn btn-accent" onclick="App._doChangePassword('${u.id}',${isTemporary})">Salvar nova senha</button>
+    </div>`;
+    openModal('overlay-generic');
+  }
+
+  function _doChangePassword(userId, isTemporary) {
+    const u    = FriomacData.getUserById(userId);
+    const nova = document.getElementById('cp-nova')?.value;
+    const conf = document.getElementById('cp-conf')?.value;
+    if (!nova || nova.length < 6) { toast('A senha deve ter ao menos 6 caracteres.','warning'); return; }
+    if (nova !== conf) { toast('As senhas não coincidem.','error'); return; }
+    if (!isTemporary) {
+      const atual = document.getElementById('cp-atual')?.value;
+      if (atual !== u?.senha) { toast('Senha atual incorreta.','error'); return; }
+    }
+    FriomacData.changeUserPassword(userId, nova, false);
+    closeModal('overlay-generic');
+    toast('Senha alterada com sucesso!', 'success');
+  }
+
+  // ── MODAL: APROVAR RESET ────────────────────────────
+  function openApproveResetModal(reqId, firstName) {
+    document.getElementById('modal-generic').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">Aprovar Redefinição — ${firstName}</div>
+      <button class="btn-close" onclick="App.closeModal('overlay-generic')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nova Senha para o usuário</label>
+        <div style="display:flex;gap:8px">
+          <input class="form-control" id="ar-senha" value="${FriomacData.generatePassword()}" style="font-family:monospace">
+          <button class="btn btn-ghost btn-sm" style="white-space:nowrap"
+            onclick="document.getElementById('ar-senha').value=FriomacData.generatePassword()">Gerar</button>
+        </div>
+        <p style="font-size:.75rem;color:var(--text-3);margin-top:4px">O usuário deverá alterar esta senha no próximo acesso.</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="App.closeModal('overlay-generic')">Cancelar</button>
+      <button class="btn btn-accent" onclick="App._doApproveReset('${reqId}')">Aprovar e salvar</button>
+    </div>`;
+    openModal('overlay-generic');
+  }
+
+  function _doApproveReset(reqId) {
+    const senha = document.getElementById('ar-senha')?.value.trim();
+    if (!senha) { toast('Informe a nova senha.','warning'); return; }
+    const me = FriomacData.getUser();
+    FriomacData.resolveResetRequest(reqId, senha, me.id);
+    closeModal('overlay-generic');
+    toast('Redefinição aprovada! Senha temporária definida.', 'success');
+    renderConfig();
+  }
+
+  function rejectReset(reqId) {
+    if (!confirm('Rejeitar esta solicitação?')) return;
+    const me = FriomacData.getUser();
+    FriomacData.rejectResetRequest(reqId, me.id);
+    toast('Solicitação rejeitada.', 'info');
+    renderConfig();
+  }
+
+  // ── MODAL: ESQUECI MINHA SENHA ──────────────────────
+  function openForgotPasswordModal() {
+    document.getElementById('modal-generic').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">Esqueci Minha Senha</div>
+      <button class="btn-close" onclick="App.closeModal('overlay-generic')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.88rem;color:var(--text-2);margin-bottom:16px">
+        Informe seu login ou e-mail. O administrador receberá a solicitação e enviará uma nova senha.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Login ou E-mail</label>
+        <input class="form-control" id="fp-id" placeholder="Ex: joao.silva">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Motivo / Observação</label>
+        <input class="form-control" id="fp-motivo" placeholder="Ex: Esqueci a senha após férias">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="App.closeModal('overlay-generic')">Cancelar</button>
+      <button class="btn btn-accent" onclick="App._doForgotPassword()">Enviar Solicitação</button>
+    </div>`;
+    openModal('overlay-generic');
+  }
+
+  function _doForgotPassword() {
+    const identifier = document.getElementById('fp-id')?.value.trim();
+    const motivo     = document.getElementById('fp-motivo')?.value.trim();
+    if (!identifier) { toast('Informe seu login ou e-mail.','warning'); return; }
+    const users = FriomacData.getSystemUsers();
+    const id = identifier.toLowerCase();
+    const found = users.find(u => (u.email||'').toLowerCase()===id || (u.login||'').toLowerCase()===id);
+    if (!found) { toast('Login ou e-mail não encontrado.','error'); return; }
+    FriomacData.addResetRequest({ userId: found.id, motivo: motivo||'Sem motivo informado' });
+    closeModal('overlay-generic');
+    toast('Solicitação enviada! Aguarde o administrador redefinir sua senha.', 'success', 5000);
+  }
+
+  // ── MODAL: MINHA CONTA ──────────────────────────────
+  function openMinhaContaModal() {
+    const u = FriomacData.getUser();
+    if (!u) return;
+    const roleLabels = FriomacData.getRoleLabels();
+    document.getElementById('modal-generic').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">Minha Conta</div>
+      <button class="btn-close" onclick="App.closeModal('overlay-generic')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding:14px;background:var(--bg-2);border-radius:var(--radius)">
+        <div class="user-avatar" style="width:48px;height:48px;font-size:1.1rem;background:${u.role==='master'?'var(--danger)':u.role==='adm_geral'?'var(--warning)':'var(--primary)'}">
+          ${u.avatar||FriomacData.getInitials(u.nome)}
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:1rem">${u.nome}</div>
+          <div style="font-size:.82rem;color:var(--text-3)">${u.cargo||''} · ${roleLabels[u.role]||u.role}</div>
+          <div style="font-family:monospace;font-size:.78rem;color:var(--primary);margin-top:2px">@${u.login}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:.83rem;margin-bottom:20px">
+        <div><span style="color:var(--text-3)">E-mail:</span> ${u.email||'—'}</div>
+        <div><span style="color:var(--text-3)">Telefone:</span> ${u.telefone||'—'}</div>
+        <div><span style="color:var(--text-3)">Cadastro:</span> ${FriomacData.formatDate(u.dataCadastro)||'—'}</div>
+        <div><span style="color:var(--text-3)">Acesso:</span> ${(u.menuPermissoes||[]).length} menus</div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:16px">
+        <button class="btn btn-ghost" style="width:100%" onclick="App.closeModal('overlay-generic');App.openChangePasswordModal('${u.id}',false)">
+          Alterar Minha Senha
+        </button>
+      </div>
+    </div>`;
+    openModal('overlay-generic');
   }
 
   // ── MODAL UTILS ────────────────────────────────────
@@ -3200,9 +3737,20 @@ const App = (function() {
       });
     });
 
-    // Header user click
+    // Header user click — Minha Conta
     document.getElementById('header-user-wrap')?.addEventListener('click', () => {
-      toast('Perfil do usuário — em desenvolvimento', 'info');
+      openMinhaContaModal();
+    });
+
+    // Footer user click — Minha Conta
+    document.getElementById('btn-logout')?.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      openMinhaContaModal();
+    });
+
+    // Esqueci minha senha
+    document.getElementById('btn-forgot-password')?.addEventListener('click', () => {
+      openForgotPasswordModal();
     });
 
     showLogin();
@@ -3307,6 +3855,22 @@ const App = (function() {
     saveEntrega,
     // Config
     renderConfig,
+    switchConfigTab,
+    openCreateUserModal,
+    saveNewUser,
+    openEditUserModal,
+    saveEditUser,
+    toggleUserActive,
+    confirmDeleteUser,
+    _doDeleteUser,
+    openChangePasswordModal,
+    _doChangePassword,
+    openApproveResetModal,
+    _doApproveReset,
+    rejectReset,
+    openForgotPasswordModal,
+    _doForgotPassword,
+    openMinhaContaModal,
     // Utils
     openModal,
     closeModal,
