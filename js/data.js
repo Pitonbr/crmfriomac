@@ -51,6 +51,7 @@ const FriomacData = (function() {
     { id:'u3', nome:'Felipe Crescente Alves Maciel', cargo:'Vendedor',      email:'felipe@friomac.ind.br',    telefone:'(11) 99999-0002', login:'felipe.crescente',   senha:'123456', role:'vendedor',     repId:'r2', avatar:'FC', grupo:'Canal Próprio',  menuPermissoes:[..._VEND_MENUS], tipoAcesso:{..._VEND_ACESSO}, ativo:true, senhaTemporaria:true, dataCadastro:'2026-04-28', criadoPor:'u_master1' },
     { id:'u4', nome:'Lauriberto Volpiano',            cargo:'Representante', email:'lauriberto@friomac.ind.br',telefone:'', login:'lauriberto.volpiano', senha:'123456', role:'representante', repId:'r6', avatar:'LV', grupo:'Representantes', menuPermissoes:[..._REP_MENUS],  tipoAcesso:{..._REP_ACESSO},  ativo:true, senhaTemporaria:true, dataCadastro:'2026-04-28', criadoPor:'u_master1' },
     { id:'u5', nome:'Pedro Taconelli Gallucci',       cargo:'Vendedor',      email:'pedro@friomac.ind.br',     telefone:'', login:'pedro.gallucci',    senha:'123456', role:'vendedor',     repId:'r4', avatar:'PG', grupo:'Canal Próprio',  menuPermissoes:[..._VEND_MENUS], tipoAcesso:{..._VEND_ACESSO}, ativo:true, senhaTemporaria:true, dataCadastro:'2026-04-28', criadoPor:'u_master1' },
+    { id:'u_adm1', nome:'Matheus Moraes',             cargo:'Gerente Comercial', email:'matheus@friomac.ind.br', telefone:'', login:'matheus.moraes',   senha:'Friomac@Adm', role:'adm_geral', avatar:'MM', grupo:'Gestão', menuPermissoes:ALL_MENUS, tipoAcesso:{...ALL_EDIT}, ativo:true, senhaTemporaria:false, dataCadastro:'2026-05-04', criadoPor:'u_master1' },
   ];
 
   // ── ESTÁGIOS DO FUNIL ────────────────────────────────
@@ -207,6 +208,14 @@ const FriomacData = (function() {
     return USERS_SEED.map(u => ({...u, menuPermissoes:[...u.menuPermissoes], tipoAcesso:{...u.tipoAcesso}}));
   }
 
+  function _mergeWithSeed(stored) {
+    const storedIds = new Set(stored.map(u => u.id));
+    const newEntries = USERS_SEED
+      .filter(u => !storedIds.has(u.id))
+      .map(u => ({...u, menuPermissoes:[...u.menuPermissoes], tipoAcesso:{...u.tipoAcesso}}));
+    return newEntries.length > 0 ? [...stored, ...newEntries] : stored;
+  }
+
   function _seedMensagens() {
     return [
       { id:'msg_seed1', tipo:'sistema', titulo:'Bem-vindo ao Friomac CRM', conteudo:'Sistema inicializado com sucesso. Configure os usuários em Configurações > Usuários.', de:'sistema', para:'todos', dataEnvio:new Date().toISOString(), lidos:[], respostas:[] },
@@ -242,7 +251,7 @@ const FriomacData = (function() {
         // Migrate users: se não tem campo 'login' é formato antigo, ressemeiar
         const stored = data.users;
         if (stored && stored.length > 0 && stored.some(u => u.login)) {
-          _state.users = stored;
+          _state.users = _mergeWithSeed(stored);
         } else {
           _state.users = _seedUsers();
         }
