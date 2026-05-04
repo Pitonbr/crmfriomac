@@ -44,6 +44,8 @@ const App = (function() {
       updateUserUI(user);
       navigateTo('dashboard');
       toast(`Bem-vindo, ${user.nome.split(' ')[0]}!`, 'success');
+      updateNotifBadge();
+      _resetSessionTimer();
       if (user.senhaTemporaria) {
         setTimeout(() => openChangePasswordModal(user.id, true), 900);
       }
@@ -2964,26 +2966,228 @@ const App = (function() {
   // ══════════════════════════════════════════════════
   // CONFIG
   // ══════════════════════════════════════════════════
+  // ── SESSION TIMEOUT ────────────────────────────────
+  let _sessionTimer    = null;
+  let _sessionWarnTimer = null;
+
+  function _getTimeoutMs() {
+    const min = parseInt(localStorage.getItem('friomac_session_timeout') || '30', 10);
+    return min > 0 ? min * 60000 : 0;
+  }
+
+  function _resetSessionTimer() {
+    if (!FriomacData.getUser()) return;
+    clearTimeout(_sessionTimer);
+    clearTimeout(_sessionWarnTimer);
+    const ms = _getTimeoutMs();
+    if (!ms) return;
+    const warnAt = ms - 60000;
+    if (warnAt > 0) {
+      _sessionWarnTimer = setTimeout(() => toast('Sua sessão expira em 1 minuto por inatividade.','warning',8000), warnAt);
+    }
+    _sessionTimer = setTimeout(() => {
+      handleLogout();
+      setTimeout(() => toast('Sessão encerrada por inatividade.','warning',5000), 200);
+    }, ms);
+  }
+
+  function _initSessionTimeout() {
+    ['mousemove','keydown','click','scroll','touchstart'].forEach(e =>
+      document.addEventListener(e, _resetSessionTimer, {passive:true})
+    );
+    _resetSessionTimer();
+  }
+
+  // ── NOTIFICAÇÕES (envelope) ─────────────────────────
+  function updateNotifBadge() {
+    const user = FriomacData.getUser();
+    const badge = document.getElementById('notif-badge');
+    if (!badge || !user) return;
+    const count = FriomacData.getMensagensNaoLidas(user.id).length;
+    badge.textContent  = count;
+    badge.style.display = count > 0 ? 'flex' : 'none';
+  }
+
+  function openMensagensPanel() {
+    const user = FriomacData.getUser();
+    if (!user) return;
+    const msgs    = FriomacData.getMensagens(user.id);
+    const isMaster = user.role === 'master' || user.role === 'adm_geral';
+    const tipoIcon = { sistema:'⚙️', alerta:'⚠️', mensagem:'✉️' };
+
+    document.getElementById('modal-generic').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">Mensagens & Alertas</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+        ${isMaster ? `<button class="btn btn-accent btn-sm" onclick="App.openNovaMensagemModal()">Nova mensagem</button>` : ''}
+        <button class="btn-close" onclick="App.closeModal('overlay-generic')">✕</button>
+      </div>
+    </div>
+    <div class="modal-body" style="max-height:70vh;overflow-y:auto;padding:0">
+      ${msgs.length === 0 ? `<div style="padding:40px;text-align:center;color:var(--text-3)">Nenhuma mensagem.</div>` :
+        msgs.map(m => {
+          const lida = (m.lidos||[]).includes(user.id);
+          const respostas = (m.respostas||[]);
+          return `
+          <div id="msg-item-${m.id}" style="padding:16px 20px;border-bottom:1px solid var(--border);cursor:pointer;background:${lida?'transparent':'var(--primary-bg,#eff6ff)'}" onclick="App._expandMsg('${m.id}')">
+            <div style="display:flex;align-items:flex-start;gap:12px">
+              <div style="font-size:1.4rem;margin-top:2px">${tipoIcon[m.tipo]||'📩'}</div>
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <strong style="font-size:.9rem${lida?'':';color:var(--primary)'}">${m.titulo}</strong>
+                  <span style="font-size:.73rem;color:var(--text-3);white-space:nowrap;margin-left:8px">${new Date(m.dataEnvio).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
+                </div>
+                <div style="font-size:.82rem;color:var(--text-2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.conteudo}</div>
+                ${respostas.length > 0 ? `<div style="font-size:.72rem;color:var(--text-3);margin-top:3px">${respostas.length} resposta(s)</div>` : ''}
+              </div>
+              ${!lida ? '<div style="width:8px;height:8px;background:var(--primary);border-radius:50%;margin-top:6px;flex-shrink:0"></div>' : ''}
+            </div>
+            <div id="msg-expand-${m.id}" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+              <p style="font-size:.85rem;color:var(--text-1);white-space:pre-wrap;margin-bottom:12px">${m.conteudo}</p>
+              ${respostas.map(r=>`
+              <div style="padding:8px 12px;background:var(--bg-2);border-radius:6px;margin-bottom:6px;font-size:.82rem">
+                <strong>${r.userName}</strong> · <span style="color:var(--text-3)">${new Date(r.timestamp).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
+                <div style="margin-top:4px">${r.texto}</div>
+              </div>`).join('')}
+              ${m.tipo !== 'sistema' && m.tipo !== 'alerta' ? `
+              <div style="display:flex;gap:8px;margin-top:8px">
+                <input class="form-control" id="reply-${m.id}" placeholder="Responder..." style="font-size:.83rem">
+                <button class="btn btn-accent btn-sm" onclick="App._replyMsg('${m.id}')">Enviar</button>
+              </div>` : ''}
+              ${isMaster && m.de === 'sistema' || m.de === user.id ? `
+              <button class="btn btn-ghost btn-sm" style="margin-top:8px;color:var(--danger)" onclick="App._deleteMsg('${m.id}')">Excluir</button>` : ''}
+            </div>
+          </div>`;
+        }).join('')
+      }
+    </div>`;
+
+    // Mark all as read
+    msgs.forEach(m => FriomacData.marcarMensagemLida(m.id, user.id));
+    updateNotifBadge();
+    openModal('overlay-generic');
+  }
+
+  function _expandMsg(msgId) {
+    const el = document.getElementById(`msg-expand-${msgId}`);
+    if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function _replyMsg(msgId) {
+    const input = document.getElementById(`reply-${msgId}`);
+    const texto = input?.value.trim();
+    if (!texto) return;
+    const user = FriomacData.getUser();
+    FriomacData.responderMensagem(msgId, user.id, user.nome.split(' ')[0], texto);
+    input.value = '';
+    toast('Resposta enviada!','success');
+    openMensagensPanel();
+  }
+
+  function _deleteMsg(msgId) {
+    if (!confirm('Excluir esta mensagem?')) return;
+    FriomacData.deleteMensagem(msgId);
+    openMensagensPanel();
+  }
+
+  function openNovaMensagemModal() {
+    const users = FriomacData.getSystemUsers().filter(u => u.ativo);
+    document.getElementById('modal-generic').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">Nova Mensagem</div>
+      <button class="btn-close" onclick="App.openMensagensPanel()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Destinatário</label>
+        <select class="form-control" id="nm-para">
+          <option value="todos">Todos os usuários</option>
+          ${users.map(u=>`<option value="${u.id}">${u.nome.split(' ').slice(0,2).join(' ')} (${u.cargo||u.role})</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo</label>
+        <select class="form-control" id="nm-tipo">
+          <option value="mensagem">Mensagem</option>
+          <option value="alerta">Alerta</option>
+          <option value="sistema">Comunicado do Sistema</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Título</label>
+        <input class="form-control" id="nm-titulo" placeholder="Assunto da mensagem">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Conteúdo</label>
+        <textarea class="form-control" id="nm-conteudo" rows="4" placeholder="Escreva sua mensagem..." style="resize:vertical"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="App.openMensagensPanel()">Cancelar</button>
+      <button class="btn btn-accent" onclick="App._sendNovaMensagem()">Enviar</button>
+    </div>`;
+  }
+
+  function _sendNovaMensagem() {
+    const para     = document.getElementById('nm-para')?.value;
+    const tipo     = document.getElementById('nm-tipo')?.value;
+    const titulo   = document.getElementById('nm-titulo')?.value.trim();
+    const conteudo = document.getElementById('nm-conteudo')?.value.trim();
+    if (!titulo || !conteudo) { toast('Preencha título e conteúdo.','warning'); return; }
+    const user = FriomacData.getUser();
+    FriomacData.addMensagem({ para, tipo, titulo, conteudo, de: user.id });
+    toast('Mensagem enviada!','success');
+    closeModal('overlay-generic');
+    updateNotifBadge();
+  }
+
   let _configTab = 'usuarios';
 
   function renderConfig() {
     const user = FriomacData.getUser();
-    if (!user || (user.role !== 'master' && user.role !== 'adm_geral')) {
+    if (!user) return;
+
+    // Usuários comuns: exibe apenas "Minha Conta"
+    if (user.role !== 'master' && user.role !== 'adm_geral') {
+      const roleLabels = FriomacData.getRoleLabels();
       document.getElementById('screen-config').innerHTML = `
-        <div class="empty-state" style="padding:60px">
-          <div style="font-size:2.5rem;margin-bottom:16px">🔒</div>
-          <p style="font-size:1rem">Acesso restrito — apenas administradores.</p>
-        </div>`;
+      <div class="card" style="max-width:520px">
+        <div class="card-header"><div class="card-title">Minha Conta</div></div>
+        <div class="card-body">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding:14px;background:var(--bg-2);border-radius:var(--radius)">
+            <div class="user-avatar" style="width:48px;height:48px;font-size:1.1rem;background:var(--primary)">
+              ${user.avatar||FriomacData.getInitials(user.nome)}
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:1rem">${user.nome}</div>
+              <div style="font-size:.82rem;color:var(--text-3)">${user.cargo||''} · ${roleLabels[user.role]||user.role}</div>
+              <div style="font-family:monospace;font-size:.78rem;color:var(--primary);margin-top:2px">@${user.login}</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:.83rem;margin-bottom:20px">
+            <div><span style="color:var(--text-3)">E-mail:</span> ${user.email||'—'}</div>
+            <div><span style="color:var(--text-3)">Telefone:</span> ${user.telefone||'—'}</div>
+            <div><span style="color:var(--text-3)">Menus:</span> ${(user.menuPermissoes||[]).filter(m=>m!=='config').length} telas</div>
+            <div><span style="color:var(--text-3)">Acesso:</span> ${user.role==='vendedor'?'Somente seus dados':'Dados restritos'}</div>
+          </div>
+          <button class="btn btn-accent" style="width:100%" onclick="App.openChangePasswordModal('${user.id}',false)">
+            Alterar minha senha
+          </button>
+        </div>
+      </div>`;
       return;
     }
-    const pending = FriomacData.getResetRequests().filter(r => r.status === 'pendente').length;
+
+    const pending  = FriomacData.getResetRequests().filter(r => r.status === 'pendente').length;
+    const isMaster = user.role === 'master';
     document.getElementById('screen-config').innerHTML = `
     <div class="tab-bar" style="margin-bottom:20px">
-      <button class="tab-btn ${_configTab==='usuarios'?'active':''}" onclick="App.switchConfigTab('usuarios')">Usuários do Sistema</button>
+      <button class="tab-btn ${_configTab==='usuarios'?'active':''}" onclick="App.switchConfigTab('usuarios')">Usuários</button>
       <button class="tab-btn ${_configTab==='solicitacoes'?'active':''}" onclick="App.switchConfigTab('solicitacoes')">
         Solicitações${pending>0?` <span class="nav-badge" style="position:static;transform:none;display:inline-flex;margin-left:6px">${pending}</span>`:''}
       </button>
-      <button class="tab-btn ${_configTab==='sistema'?'active':''}" onclick="App.switchConfigTab('sistema')">Sistema & Alertas</button>
+      <button class="tab-btn ${_configTab==='sistema'?'active':''}" onclick="App.switchConfigTab('sistema')">Sistema</button>
+      ${isMaster?`<button class="tab-btn ${_configTab==='auditoria'?'active':''}" onclick="App.switchConfigTab('auditoria')">Log de Auditoria</button>`:''}
     </div>
     <div id="config-tab-content"></div>`;
     _renderConfigTab();
@@ -2997,6 +3201,66 @@ const App = (function() {
     if (_configTab === 'usuarios')     el.innerHTML = _buildConfigUsuarios();
     if (_configTab === 'solicitacoes') el.innerHTML = _buildConfigSolicitacoes();
     if (_configTab === 'sistema')      el.innerHTML = _buildConfigSistema();
+    if (_configTab === 'auditoria')    el.innerHTML = _buildConfigAuditoria();
+  }
+
+  // ── TAB AUDITORIA (Master apenas) ──────────────────
+  function _buildConfigAuditoria() {
+    const log = FriomacData.getAuditLog();
+    const actionLabel = {
+      LOGIN:'🔐 Login', LOGOUT:'🚪 Logout',
+      USER_CRIADO:'👤 Usuário criado', USER_EXCLUIDO:'🗑 Usuário excluído', USER_ATUALIZADO:'✏️ Usuário editado',
+      SENHA_ALTERADA:'🔑 Senha alterada',
+      MSG_ENVIADA:'✉️ Mensagem enviada', MSG_RESPOSTA:'💬 Resposta', MSG_EXCLUIDA:'🗑 Msg excluída',
+    };
+    return `
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Log de Auditoria do Sistema</div>
+        <div style="display:flex;gap:8px">
+          <input class="form-control" id="audit-search" placeholder="Buscar..." style="width:200px;height:32px;font-size:.82rem"
+            oninput="App._filterAudit()">
+          <select class="form-control" id="audit-action" style="width:160px;height:32px;font-size:.82rem" onchange="App._filterAudit()">
+            <option value="">Todas as ações</option>
+            <option value="LOGIN">Login/Logout</option>
+            <option value="USER">Usuários</option>
+            <option value="SENHA">Senhas</option>
+            <option value="MSG">Mensagens</option>
+          </select>
+        </div>
+      </div>
+      <div id="audit-table-wrap">
+        ${_buildAuditTable(log, actionLabel)}
+      </div>
+    </div>`;
+  }
+
+  function _buildAuditTable(log, actionLabel) {
+    if (!actionLabel) {
+      actionLabel = { LOGIN:'🔐 Login', LOGOUT:'🚪 Logout', USER_CRIADO:'👤 Usuário criado', USER_EXCLUIDO:'🗑 Usuário excluído', SENHA_ALTERADA:'🔑 Senha alterada', MSG_ENVIADA:'✉️ Mensagem enviada' };
+    }
+    if (log.length === 0) return `<div style="padding:30px;text-align:center;color:var(--text-3)">Nenhum registro encontrado.</div>`;
+    return `<div class="table-wrapper"><table>
+      <thead><tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>Alvo</th><th>Detalhes</th></tr></thead>
+      <tbody>
+        ${log.map(e => `
+        <tr>
+          <td style="font-size:.78rem;white-space:nowrap;color:var(--text-3)">${new Date(e.timestamp).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
+          <td style="font-size:.82rem"><strong>${e.userName}</strong><div style="font-family:monospace;font-size:.72rem;color:var(--text-3)">@${e.userLogin}</div></td>
+          <td style="font-size:.82rem">${actionLabel[e.action]||e.action}</td>
+          <td style="font-family:monospace;font-size:.78rem">${e.target||'—'}</td>
+          <td style="font-size:.78rem;color:var(--text-3)">${e.details||'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+  }
+
+  function _filterAudit() {
+    const search = document.getElementById('audit-search')?.value || '';
+    const action = document.getElementById('audit-action')?.value || '';
+    const log = FriomacData.getAuditLog({ search, action });
+    const wrap = document.getElementById('audit-table-wrap');
+    if (wrap) wrap.innerHTML = _buildAuditTable(log, null);
   }
 
   // ── TAB USUÁRIOS ────────────────────────────────────
@@ -3099,6 +3363,7 @@ const App = (function() {
 
   // ── TAB SISTEMA ─────────────────────────────────────
   function _buildConfigSistema() {
+    const currentTimeout = localStorage.getItem('friomac_session_timeout') || '30';
     return `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
       <div class="card">
@@ -3108,8 +3373,21 @@ const App = (function() {
           <div class="form-group"><label class="form-label">Meta Anual (R$)</label><input class="form-control" type="number" value="12000000"></div>
           <div class="form-group"><label class="form-label">Taxa de Conversão Meta (%)</label><input class="form-control" type="number" value="35"></div>
           <div class="form-group"><label class="form-label">Ticket Médio Meta (R$)</label><input class="form-control" type="number" value="130000"></div>
-          <div style="display:flex;gap:10px;margin-top:16px">
-            <button class="btn btn-accent" onclick="App.toast('Configurações salvas!','success')">Salvar</button>
+          <div class="form-group" style="margin-top:16px">
+            <label class="form-label">Timeout de sessão por inatividade</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select class="form-control" id="cfg-timeout" style="width:auto">
+                <option value="0" ${currentTimeout==='0'?'selected':''}>Desativado</option>
+                <option value="15" ${currentTimeout==='15'?'selected':''}>15 minutos</option>
+                <option value="30" ${currentTimeout==='30'?'selected':''}>30 minutos</option>
+                <option value="60" ${currentTimeout==='60'?'selected':''}>1 hora</option>
+                <option value="120" ${currentTimeout==='120'?'selected':''}>2 horas</option>
+              </select>
+              <button class="btn btn-ghost btn-sm" onclick="App._saveTimeout()">Salvar</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:10px">
+            <button class="btn btn-accent" onclick="App.toast('Configurações salvas!','success')">Salvar configurações</button>
             <button class="btn btn-danger btn-sm" onclick="if(confirm('Resetar todos os dados operacionais?')){FriomacData.resetData();App.toast('Dados resetados!','warning');App.renderScreen('dashboard')}">Reset dados</button>
           </div>
         </div>
@@ -3213,7 +3491,14 @@ const App = (function() {
       </div>
 
       <div style="border-top:1px solid var(--border);margin:18px 0;padding-top:18px">
-        <div class="section-title" style="margin-bottom:14px">Permissões de Menu</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div class="section-title" style="margin:0">Permissões de Menu</div>
+          <div style="display:flex;gap:6px">
+            <span style="font-size:.75rem;color:var(--text-3);align-self:center">Aplicar perfil:</span>
+            <button class="btn btn-ghost btn-sm" onclick="App._applyPerfil('vendedor')">Vendedor</button>
+            <button class="btn btn-ghost btn-sm" onclick="App._applyPerfil('representante')">Representante</button>
+          </div>
+        </div>
         <div style="display:grid;gap:8px" id="nu-menus">
           ${menus.map(m=>`
           <div style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:8px 12px;background:var(--bg-2);border-radius:6px">
@@ -3508,6 +3793,31 @@ const App = (function() {
     renderConfig();
   }
 
+  function _saveTimeout() {
+    const val = document.getElementById('cfg-timeout')?.value || '30';
+    localStorage.setItem('friomac_session_timeout', val);
+    _resetSessionTimer();
+    toast(val==='0'?'Timeout desativado.':'Timeout configurado para '+val+' minutos.','success');
+  }
+
+  function _applyPerfil(perfilKey) {
+    const perfis = FriomacData.getPerfis();
+    const p = perfis[perfilKey];
+    if (!p) return;
+    const menus = FriomacData.getMenuLabels();
+    menus.forEach(m => {
+      const chk = document.getElementById(`nu-chk-${m.id}`);
+      if (!chk) return;
+      chk.checked = p.menuPermissoes.includes(m.id);
+      const tipo = (p.tipoAcesso||{})[m.id] || 'visualizacao';
+      const radioEl = document.querySelector(`input[name="nu-acesso-${m.id}"][value="${tipo}"]`);
+      if (radioEl) radioEl.checked = true;
+    });
+    const roleEl = document.getElementById('nu-role');
+    if (roleEl) roleEl.value = p.role;
+    toast(`Perfil "${p.label}" aplicado.`, 'success', 2000);
+  }
+
   function rejectReset(reqId) {
     if (!confirm('Rejeitar esta solicitação?')) return;
     const me = FriomacData.getUser();
@@ -3753,6 +4063,14 @@ const App = (function() {
       openForgotPasswordModal();
     });
 
+    // Envelope / mensagens
+    document.getElementById('btn-mensagens')?.addEventListener('click', () => {
+      openMensagensPanel();
+    });
+
+    // Session timeout
+    _initSessionTimeout();
+
     showLogin();
   }
 
@@ -3871,6 +4189,20 @@ const App = (function() {
     openForgotPasswordModal,
     _doForgotPassword,
     openMinhaContaModal,
+    // Mensagens
+    openMensagensPanel,
+    openNovaMensagemModal,
+    _expandMsg,
+    _replyMsg,
+    _deleteMsg,
+    _sendNovaMensagem,
+    updateNotifBadge,
+    // Auditoria
+    _filterAudit,
+    // Timeout
+    _saveTimeout,
+    // Perfis
+    _applyPerfil,
     // Utils
     openModal,
     closeModal,

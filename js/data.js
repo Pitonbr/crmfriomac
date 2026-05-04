@@ -23,18 +23,34 @@ const FriomacData = (function() {
   const ROLE_LABELS = { master:'ADM Master', adm_geral:'ADM Geral', vendedor:'Vendedor', representante:'Representante', administrativo:'Administrativo', financeiro:'Financeiro' };
 
   // ── USUÁRIOS — SEED INICIAL ──────────────────────────
-  const _VEND_MENUS = ['dashboard','kanban','orcamentos','clientes','comissoes'];
-  const _VEND_ACESSO = { dashboard:'visualizacao', kanban:'edicao', orcamentos:'edicao', clientes:'visualizacao', comissoes:'visualizacao' };
-  const _REP_MENUS  = ['dashboard','kanban','clientes'];
-  const _REP_ACESSO  = { dashboard:'visualizacao', kanban:'edicao', clientes:'visualizacao' };
+  // Perfil Vendedor: vê apenas dados próprios
+  const _VEND_MENUS  = ['dashboard','kanban','orcamentos','campanhas','config'];
+  const _VEND_ACESSO = { dashboard:'visualizacao', kanban:'edicao', orcamentos:'edicao', campanhas:'visualizacao', config:'edicao' };
+  // Perfil Representante: vê apenas dados próprios
+  const _REP_MENUS   = ['dashboard','kanban','campanhas','config'];
+  const _REP_ACESSO  = { dashboard:'visualizacao', kanban:'edicao', campanhas:'visualizacao', config:'edicao' };
+
+  // Perfis pré-definidos para aplicar na criação de usuários
+  const PERFIS_PREDEFINIDOS = {
+    vendedor: {
+      label: 'Vendedor', role:'vendedor',
+      menuPermissoes: _VEND_MENUS, tipoAcesso: _VEND_ACESSO, scopeRestrito: true,
+      descricao: 'Dashboard, Leads, Orçamentos e Campanhas — apenas dados próprios',
+    },
+    representante: {
+      label: 'Representante', role:'representante',
+      menuPermissoes: _REP_MENUS, tipoAcesso: _REP_ACESSO, scopeRestrito: true,
+      descricao: 'Dashboard, Leads e Campanhas — apenas dados próprios',
+    },
+  };
 
   const USERS_SEED = [
     { id:'u_master1', nome:'Alex Piton',              cargo:'Sócio Administrador', email:'admin@friomac.ind.br',     telefone:'', login:'alex.piton',        senha:'Friomac@1', role:'master',       avatar:'AP', grupo:'Gestão',        menuPermissoes:ALL_MENUS, tipoAcesso:{...ALL_EDIT}, ativo:true, senhaTemporaria:false, dataCadastro:'2026-04-28', criadoPor:null },
     { id:'u_master2', nome:'Ale Munoz',               cargo:'Sócio Administrador', email:'alemunoz@uol.com.br',      telefone:'', login:'ale.munoz',         senha:'Friomac@2', role:'master',       avatar:'AM', grupo:'Gestão',        menuPermissoes:ALL_MENUS, tipoAcesso:{...ALL_EDIT}, ativo:true, senhaTemporaria:false, dataCadastro:'2026-04-28', criadoPor:null },
-    { id:'u2', nome:'Caio Victor Volpiano',           cargo:'Vendedor',            email:'caio@friomac.ind.br',      telefone:'(11) 99999-0001', login:'caio.victor',     senha:'123456', role:'vendedor',     avatar:'CV', grupo:'Canal Próprio', menuPermissoes:_VEND_MENUS, tipoAcesso:{..._VEND_ACESSO}, ativo:true, senhaTemporaria:true, dataCadastro:'2026-04-28', criadoPor:'u_master1' },
-    { id:'u3', nome:'Felipe Crescente Alves Maciel', cargo:'Vendedor',            email:'felipe@friomac.ind.br',    telefone:'(11) 99999-0002', login:'felipe.crescente', senha:'123456', role:'vendedor',     avatar:'FC', grupo:'Canal Próprio', menuPermissoes:_VEND_MENUS, tipoAcesso:{..._VEND_ACESSO}, ativo:true, senhaTemporaria:true, dataCadastro:'2026-04-28', criadoPor:'u_master1' },
-    { id:'u4', nome:'Lauriberto Volpiano',            cargo:'Representante',       email:'lauriberto@friomac.ind.br',telefone:'', login:'lauriberto.volpiano',senha:'123456', role:'representante',avatar:'LV', grupo:'Representantes', menuPermissoes:_REP_MENUS, tipoAcesso:{..._REP_ACESSO}, ativo:true, senhaTemporaria:true, dataCadastro:'2026-04-28', criadoPor:'u_master1' },
-    { id:'u5', nome:'Pedro Taconelli Gallucci',       cargo:'Vendedor',            email:'pedro@friomac.ind.br',     telefone:'', login:'pedro.gallucci',    senha:'123456', role:'vendedor',     avatar:'PG', grupo:'Canal Próprio', menuPermissoes:_VEND_MENUS, tipoAcesso:{..._VEND_ACESSO}, ativo:true, senhaTemporaria:true, dataCadastro:'2026-04-28', criadoPor:'u_master1' },
+    { id:'u2', nome:'Caio Victor Volpiano',           cargo:'Vendedor',      email:'caio@friomac.ind.br',      telefone:'(11) 99999-0001', login:'caio.victor',       senha:'123456', role:'vendedor',     repId:'r1', avatar:'CV', grupo:'Canal Próprio',  menuPermissoes:[..._VEND_MENUS], tipoAcesso:{..._VEND_ACESSO}, ativo:true, senhaTemporaria:true, dataCadastro:'2026-04-28', criadoPor:'u_master1' },
+    { id:'u3', nome:'Felipe Crescente Alves Maciel', cargo:'Vendedor',      email:'felipe@friomac.ind.br',    telefone:'(11) 99999-0002', login:'felipe.crescente',   senha:'123456', role:'vendedor',     repId:'r2', avatar:'FC', grupo:'Canal Próprio',  menuPermissoes:[..._VEND_MENUS], tipoAcesso:{..._VEND_ACESSO}, ativo:true, senhaTemporaria:true, dataCadastro:'2026-04-28', criadoPor:'u_master1' },
+    { id:'u4', nome:'Lauriberto Volpiano',            cargo:'Representante', email:'lauriberto@friomac.ind.br',telefone:'', login:'lauriberto.volpiano', senha:'123456', role:'representante', repId:'r6', avatar:'LV', grupo:'Representantes', menuPermissoes:[..._REP_MENUS],  tipoAcesso:{..._REP_ACESSO},  ativo:true, senhaTemporaria:true, dataCadastro:'2026-04-28', criadoPor:'u_master1' },
+    { id:'u5', nome:'Pedro Taconelli Gallucci',       cargo:'Vendedor',      email:'pedro@friomac.ind.br',     telefone:'', login:'pedro.gallucci',    senha:'123456', role:'vendedor',     repId:'r4', avatar:'PG', grupo:'Canal Próprio',  menuPermissoes:[..._VEND_MENUS], tipoAcesso:{..._VEND_ACESSO}, ativo:true, senhaTemporaria:true, dataCadastro:'2026-04-28', criadoPor:'u_master1' },
   ];
 
   // ── ESTÁGIOS DO FUNIL ────────────────────────────────
@@ -173,6 +189,8 @@ const FriomacData = (function() {
     currentUser: null,
     users: [],
     resetRequests: [],
+    auditLog: [],
+    mensagens: [],
     leads: [],
     reps: [],
     clientes: [],
@@ -189,6 +207,33 @@ const FriomacData = (function() {
     return USERS_SEED.map(u => ({...u, menuPermissoes:[...u.menuPermissoes], tipoAcesso:{...u.tipoAcesso}}));
   }
 
+  function _seedMensagens() {
+    return [
+      { id:'msg_seed1', tipo:'sistema', titulo:'Bem-vindo ao Friomac CRM', conteudo:'Sistema inicializado com sucesso. Configure os usuários em Configurações > Usuários.', de:'sistema', para:'todos', dataEnvio:new Date().toISOString(), lidos:[], respostas:[] },
+      { id:'msg_seed2', tipo:'alerta',  titulo:'Pipeline: leads sem atividade', conteudo:'Existem leads com mais de 90 dias sem movimentação. Acesse o Kanban e revise as oportunidades em aberto.', de:'sistema', para:'todos', dataEnvio:new Date().toISOString(), lidos:[], respostas:[] },
+    ];
+  }
+
+  function _logAction(action, target, details) {
+    const u = _state.currentUser;
+    const entry = {
+      id: 'log_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+      timestamp: new Date().toISOString(),
+      userId:    u?.id    || 'sistema',
+      userName:  u?.nome  || 'Sistema',
+      userLogin: u?.login || '—',
+      action, target: target||'', details: details||'',
+    };
+    _state.auditLog.unshift(entry);
+    if (_state.auditLog.length > 2000) _state.auditLog = _state.auditLog.slice(0, 2000);
+    _saveToStorage();
+  }
+
+  function _isRestricted() {
+    const u = _state.currentUser;
+    return u && u.role !== 'master' && u.role !== 'adm_geral' && !!u.repId;
+  }
+
   function _loadFromStorage() {
     try {
       const saved = localStorage.getItem('friomac_crm_data');
@@ -202,6 +247,8 @@ const FriomacData = (function() {
           _state.users = _seedUsers();
         }
         _state.resetRequests  = data.resetRequests  || [];
+        _state.auditLog       = data.auditLog       || [];
+        _state.mensagens      = data.mensagens      || _seedMensagens();
         _state.leads          = data.leads          || [...LEADS_BASE.map(l => ({...l}))];
         _state.reps           = data.reps           || [...REPS_BASE.map(r => ({...r}))];
         _state.clientes       = data.clientes       || _buildClientesFromLeads();
@@ -215,6 +262,8 @@ const FriomacData = (function() {
       } else {
         _state.users         = _seedUsers();
         _state.resetRequests = [];
+        _state.auditLog      = [];
+        _state.mensagens     = _seedMensagens();
         _state.leads         = [...LEADS_BASE.map(l => ({...l}))];
         _state.reps          = [...REPS_BASE.map(r => ({...r}))];
         _state.clientes      = _buildClientesFromLeads();
@@ -225,6 +274,8 @@ const FriomacData = (function() {
     } catch(e) {
       _state.users           = _seedUsers();
       _state.resetRequests   = [];
+      _state.auditLog        = [];
+      _state.mensagens       = _seedMensagens();
       _state.leads           = [...LEADS_BASE.map(l => ({...l}))];
       _state.reps            = [...REPS_BASE.map(r => ({...r}))];
       _state.clientes        = _buildClientesFromLeads();
@@ -243,6 +294,8 @@ const FriomacData = (function() {
       localStorage.setItem('friomac_crm_data', JSON.stringify({
         users:           _state.users,
         resetRequests:   _state.resetRequests,
+        auditLog:        _state.auditLog,
+        mensagens:       _state.mensagens,
         leads:           _state.leads,
         reps:            _state.reps,
         clientes:        _state.clientes,
@@ -298,10 +351,17 @@ const FriomacData = (function() {
         ((u.email||'').toLowerCase() === id || (u.login||'').toLowerCase() === id) &&
         u.senha === senha
       );
-      if (u) { _state.currentUser = u; return u; }
+      if (u) {
+        _state.currentUser = u;
+        _logAction('LOGIN', u.login, `Acesso via ${id.includes('@')?'email':'login'}`);
+        return u;
+      }
       return null;
     },
-    logout()        { _state.currentUser = null; },
+    logout() {
+      if (_state.currentUser) _logAction('LOGOUT', _state.currentUser.login, '');
+      _state.currentUser = null;
+    },
     getUser()       { return _state.currentUser; },
     getUsers()      { return [..._state.users]; },
 
@@ -325,6 +385,7 @@ const FriomacData = (function() {
         avatar: this.getInitials(data.nome),
       };
       _state.users.push(u);
+      _logAction('USER_CRIADO', u.login, `Nome: ${u.nome} | Perfil: ${u.role}`);
       _saveToStorage();
       return u;
     },
@@ -340,11 +401,15 @@ const FriomacData = (function() {
     },
 
     deleteSystemUser(id) {
+      const u = _state.users.find(x => x.id === id);
+      _logAction('USER_EXCLUIDO', u?.login||id, `Nome: ${u?.nome||'?'}`);
       _state.users = _state.users.filter(u => u.id !== id);
       _saveToStorage();
     },
 
     changeUserPassword(id, novaSenha, isTemp = false) {
+      const u = _state.users.find(x => x.id === id);
+      _logAction('SENHA_ALTERADA', u?.login||id, isTemp?'Senha temporária definida':'Senha alterada pelo usuário');
       return this.updateSystemUser(id, { senha: novaSenha, senhaTemporaria: isTemp });
     },
 
@@ -382,6 +447,78 @@ const FriomacData = (function() {
       }
     },
 
+    // ── AUDIT LOG ──────────────────────────────────
+    getAuditLog(filters = {}) {
+      let log = [..._state.auditLog];
+      if (filters.userId) log = log.filter(e => e.userId === filters.userId);
+      if (filters.action) log = log.filter(e => e.action.includes(filters.action.toUpperCase()));
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        log = log.filter(e =>
+          (e.userName||'').toLowerCase().includes(q) ||
+          (e.target||'').toLowerCase().includes(q) ||
+          (e.details||'').toLowerCase().includes(q) ||
+          (e.action||'').toLowerCase().includes(q)
+        );
+      }
+      return log.slice(0, 500);
+    },
+
+    // ── MENSAGENS / NOTIFICAÇÕES ───────────────────
+    getMensagens(userId) {
+      if (!userId) return [];
+      return _state.mensagens.filter(m => m.para === 'todos' || m.para === userId || m.de === userId);
+    },
+
+    getMensagensNaoLidas(userId) {
+      return this.getMensagens(userId).filter(m => !(m.lidos||[]).includes(userId));
+    },
+
+    addMensagem(dados) {
+      const m = {
+        id: 'msg_' + Date.now(),
+        dataEnvio: new Date().toISOString(),
+        lidos: [],
+        respostas: [],
+        tipo: 'mensagem',
+        ...dados,
+      };
+      _state.mensagens.unshift(m);
+      _logAction('MSG_ENVIADA', dados.para, dados.titulo||'');
+      _saveToStorage();
+      return m;
+    },
+
+    marcarMensagemLida(msgId, userId) {
+      const m = _state.mensagens.find(x => x.id === msgId);
+      if (m && !(m.lidos||[]).includes(userId)) {
+        m.lidos = [...(m.lidos||[]), userId];
+        _saveToStorage();
+      }
+    },
+
+    responderMensagem(msgId, userId, userName, texto) {
+      const m = _state.mensagens.find(x => x.id === msgId);
+      if (m) {
+        m.respostas = [...(m.respostas||[]), { userId, userName, texto, timestamp: new Date().toISOString() }];
+        _logAction('MSG_RESPOSTA', msgId, `De: ${userName}`);
+        _saveToStorage();
+      }
+    },
+
+    deleteMensagem(msgId) {
+      _logAction('MSG_EXCLUIDA', msgId, '');
+      _state.mensagens = _state.mensagens.filter(m => m.id !== msgId);
+      _saveToStorage();
+    },
+
+    // ── PERFIS PRÉ-DEFINIDOS ───────────────────────
+    getPerfis() { return PERFIS_PREDEFINIDOS; },
+
+    // ── SCOPE ──────────────────────────────────────
+    isUserRestricted() { return _isRestricted(); },
+    getUserRepId()     { return _state.currentUser?.repId || null; },
+
     // ── UTILITIES ──────────────────────────────────
     generateLogin(nome) {
       const parts = (nome||'').trim()
@@ -412,6 +549,12 @@ const FriomacData = (function() {
     // Leads
     getLeads(filters = {}) {
       let list = [..._state.leads];
+
+      // Escopo restrito: vendedor/representante vê apenas seus leads
+      if (_isRestricted()) {
+        const repId = _state.currentUser.repId;
+        list = list.filter(l => l.vendedor === repId);
+      }
 
       // By default show only active (not ganho/perdido) unless explicitly requested
       if (filters.resultado === 'ganho') {
@@ -621,7 +764,13 @@ const FriomacData = (function() {
     },
 
     // Reps
-    getReps()       { return [..._state.reps]; },
+    getReps() {
+      if (_isRestricted()) {
+        const repId = _state.currentUser.repId;
+        return _state.reps.filter(r => r.id === repId);
+      }
+      return [..._state.reps];
+    },
     getRepById(id)  { return _state.reps.find(r => r.id === id); },
     getRepByNome(n) { return _state.reps.find(r => r.nome.toLowerCase().includes((n||'').toLowerCase())); },
 
@@ -758,6 +907,11 @@ const FriomacData = (function() {
     // Comissões
     getComissoes(filtros = {}) {
       let list = [..._state.comissoes];
+      // Escopo restrito
+      if (_isRestricted()) {
+        const repId = _state.currentUser.repId;
+        list = list.filter(c => c.vendedorId === repId || c.vendedor === repId);
+      }
       if (filtros.vendedor) list = list.filter(c => c.vendedor === filtros.vendedor || (c.vendedorId && c.vendedorId === filtros.vendedor));
       if (filtros.canal)    list = list.filter(c => c.canal === filtros.canal);
       if (filtros.periodo) {
