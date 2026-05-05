@@ -1,11 +1,17 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 
 import { AppShell } from '@/components/layout/AppShell';
-import { DashboardPlaceholder } from '@/features/dashboard/DashboardPlaceholder';
 import { LoginScreen } from '@/features/auth/LoginScreen';
+import { CampanhasPlaceholder } from '@/features/campanhas/CampanhasPlaceholder';
+import { ClientesPage } from '@/features/clientes/ClientesPage';
+import { ComissoesPage } from '@/features/comissoes/ComissoesPage';
+import { ConfigPage } from '@/features/config/ConfigPage';
+import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { KanbanPage } from '@/features/kanban/KanbanPage';
 import { LeadModal } from '@/features/kanban/LeadModal';
-import { NotImplementedPage } from '@/features/NotImplementedPage';
+import { OrcamentosPage } from '@/features/orcamentos/OrcamentosPage';
+import { PrazosPage } from '@/features/prazos/PrazosPage';
+import { VendedoresPage } from '@/features/vendedores/VendedoresPage';
 
 import { RequireAuth, RoleGuard } from './guards';
 
@@ -21,48 +27,22 @@ export const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           { index: true, element: <Navigate to="/dashboard" replace /> },
-          { path: 'dashboard', element: <DashboardPlaceholder /> },
+          { path: 'dashboard', element: <DashboardPage /> },
           {
             path: 'kanban',
             element: <KanbanPage />,
-            children: [
-              // Modal route — abre o LeadModal sobre o board ao acessar /kanban/leads/:leadId
-              { path: 'leads/:leadId', element: <LeadModal /> },
-            ],
+            children: [{ path: 'leads/:leadId', element: <LeadModal /> }],
           },
-          {
-            path: 'orcamentos',
-            element: <NotImplementedPage titulo="Orçamentos" sprint="Sprint 4" />,
-          },
-          {
-            path: 'clientes',
-            element: <NotImplementedPage titulo="Clientes" sprint="Sprint 4" />,
-          },
-          {
-            path: 'campanhas',
-            element: <NotImplementedPage titulo="Campanhas & Mídias" sprint="Sprint 4" />,
-          },
-          {
-            path: 'comissoes',
-            element: <NotImplementedPage titulo="Comissões" sprint="Sprint 4" />,
-          },
-          {
-            path: 'prazos',
-            element: <NotImplementedPage titulo="Prazo de Entrega" sprint="Sprint 4" />,
-          },
+          { path: 'orcamentos', element: <OrcamentosPage /> },
+          { path: 'clientes', element: <ClientesPage /> },
+          { path: 'campanhas', element: <CampanhasPlaceholder /> },
+          { path: 'comissoes', element: <ComissoesPage /> },
+          { path: 'prazos', element: <PrazosPage /> },
           {
             element: <RoleGuard allowed={['master']} />,
             children: [
-              {
-                path: 'vendedores',
-                element: (
-                  <NotImplementedPage titulo="Vendedores & Representantes" sprint="Sprint 4" />
-                ),
-              },
-              {
-                path: 'config',
-                element: <NotImplementedPage titulo="Configurações" sprint="Sprint 4" />,
-              },
+              { path: 'vendedores', element: <VendedoresPage /> },
+              { path: 'config', element: <ConfigPage /> },
             ],
           },
         ],

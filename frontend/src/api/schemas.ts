@@ -120,3 +120,117 @@ export const ObservacaoSchema = z.object({
   criado_em: z.string(),
 });
 export type Observacao = z.infer<typeof ObservacaoSchema>;
+
+// ── Orcamento / Comissao / Entrega (Sprint 4) ───────────────────────
+export const OrcamentoStatusSchema = z.enum([
+  'rascunho',
+  'enviado',
+  'aceito',
+  'recusado',
+  'expirado',
+]);
+export type OrcamentoStatus = z.infer<typeof OrcamentoStatusSchema>;
+
+export const OrcamentoSchema = z.object({
+  id: z.string().uuid(),
+  lead_id: z.string().uuid(),
+  numero: z.string(),
+  versao: z.number().int(),
+  valor_total: z.coerce.number(),
+  status: OrcamentoStatusSchema,
+  data_envio: z.string().nullable().optional(),
+  validade_ate: z.string().nullable().optional(),
+  observacoes: z.string().nullable().optional(),
+  criado_por: z.string().uuid().nullable().optional(),
+  criado_em: z.string(),
+  atualizado_em: z.string(),
+});
+export type Orcamento = z.infer<typeof OrcamentoSchema>;
+
+export const ComissaoStatusSchema = z.enum([
+  'pendente',
+  'aprovada',
+  'paga',
+  'cancelada',
+]);
+export type ComissaoStatus = z.infer<typeof ComissaoStatusSchema>;
+
+export const ComissaoSchema = z.object({
+  id: z.string().uuid(),
+  representante_id: z.string().uuid(),
+  lead_id: z.string().uuid(),
+  orcamento_id: z.string().uuid().nullable().optional(),
+  valor_base: z.coerce.number(),
+  percentual: z.coerce.number(),
+  valor_comissao: z.coerce.number(),
+  status: ComissaoStatusSchema,
+  comprovante_id: z.string().uuid().nullable().optional(),
+  data_pagamento: z.string().nullable().optional(),
+  criado_em: z.string(),
+  atualizado_em: z.string(),
+});
+export type Comissao = z.infer<typeof ComissaoSchema>;
+
+export const EntregaStatusSchema = z.enum([
+  'planejada',
+  'em_producao',
+  'entregue',
+  'atrasada',
+]);
+export type EntregaStatus = z.infer<typeof EntregaStatusSchema>;
+
+export const EntregaSchema = z.object({
+  id: z.string().uuid(),
+  lead_id: z.string().uuid(),
+  prazo_estimado: z.string().nullable().optional(),
+  prazo_real: z.string().nullable().optional(),
+  status: EntregaStatusSchema,
+  observacoes: z.string().nullable().optional(),
+  criado_em: z.string(),
+  atualizado_em: z.string(),
+});
+export type Entrega = z.infer<typeof EntregaSchema>;
+
+// ── Dashboard KPIs ──────────────────────────────────────────────────
+export const FunilStageSchema = z.object({
+  stage_id: z.string(),
+  label: z.string(),
+  cor: z.string(),
+  ordem: z.number().int(),
+  qtd_leads: z.number().int(),
+  valor_total: z.coerce.number(),
+});
+export type FunilStage = z.infer<typeof FunilStageSchema>;
+
+export const TopRepSchema = z.object({
+  representante_id: z.string(),
+  nome: z.string(),
+  qtd_leads: z.number().int(),
+  valor_total: z.coerce.number(),
+});
+export type TopRep = z.infer<typeof TopRepSchema>;
+
+export const MesAggSchema = z.object({
+  mes: z.string(),
+  qtd_orc: z.number().int(),
+  valor_orc: z.coerce.number(),
+  qtd_fech: z.number().int(),
+  valor_fech: z.coerce.number(),
+});
+export type MesAgg = z.infer<typeof MesAggSchema>;
+
+export const DashboardKPIsSchema = z.object({
+  meta_anual: z.coerce.number(),
+  total_orcado: z.coerce.number(),
+  total_fechado: z.coerce.number(),
+  qtd_leads_abertos: z.number().int(),
+  qtd_leads_ganhos: z.number().int(),
+  qtd_leads_perdidos: z.number().int(),
+  taxa_conversao: z.number(),
+  ticket_medio: z.coerce.number(),
+  valor_pipeline_ponderado: z.coerce.number(),
+  funil: z.array(FunilStageSchema),
+  top_reps: z.array(TopRepSchema),
+  mensal: z.array(MesAggSchema),
+});
+export type DashboardKPIs = z.infer<typeof DashboardKPIsSchema>;
