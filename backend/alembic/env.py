@@ -1,7 +1,4 @@
-"""Alembic environment com suporte a SQLAlchemy 2.0 async.
-
-Sprint 1: stub. URL vem de Settings; metadata será preenchida em Sprint 2+.
-"""
+"""Alembic environment com SQLAlchemy 2.0 async."""
 
 import asyncio
 from logging.config import fileConfig
@@ -12,6 +9,10 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.config import settings
+from app.db.base import Base
+
+# Importa todos os models para que `Base.metadata` esteja completa
+from app import models  # noqa: F401
 
 # Alembic Config object
 config = context.config
@@ -19,34 +20,37 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Injeta a URL do banco vinda das Settings (já validada por Pydantic)
 config.set_main_option("sqlalchemy.url", str(settings.database_url))
 
-# MetaData alvo — preenchido na Sprint 2 quando os models existirem
-target_metadata = None
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    """Rodar migrations no modo 'offline' (gera SQL sem conectar)."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        compare_type=True,
+        compare_server_default=True,
     )
     with context.begin_transaction():
         context.run_migrations()
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        compare_type=True,
+        compare_server_default=True,
+    )
     with context.begin_transaction():
         context.run_migrations()
 
 
 async def run_migrations_online() -> None:
-    """Rodar migrations no modo 'online' (engine async)."""
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
