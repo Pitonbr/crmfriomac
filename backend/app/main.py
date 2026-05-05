@@ -10,7 +10,9 @@ from sqlalchemy import text
 from app.api.v1 import router as api_v1
 from app.config import settings
 from app.db.session import engine
+from app.integrations.storage import ensure_bucket
 from app.logging import RequestIdMiddleware, configure_logging
+from app.ws.router import router as ws_router
 
 configure_logging(settings.log_level)
 log = structlog.get_logger()
@@ -19,6 +21,13 @@ log = structlog.get_logger()
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     log.info("app.startup", env=settings.app_env, version=_app.version)
+
+    # Garante bucket MinIO no startup (best-effort)
+    try:
+        await ensure_bucket()
+    except Exception as e:
+        log.warning("minio.bootstrap_failed", error=str(e))
+
     yield
     await engine.dispose()
     log.info("app.shutdown")
@@ -26,7 +35,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="Friomac CRM API",
-    version="0.2.0",
+    version="0.3.0",
     description="Backend do Friomac CRM — refrigeração industrial.",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -36,6 +45,7 @@ app = FastAPI(
 
 app.add_middleware(RequestIdMiddleware)
 app.include_router(api_v1)
+app.include_router(ws_router)
 
 
 @app.get("/health", tags=["meta"], summary="Liveness probe")
@@ -46,7 +56,7 @@ async def health() -> dict[str, str]:
 
 @app.get("/ready", tags=["meta"], summary="Readiness probe")
 async def ready() -> dict[str, object]:
-    """Verifica DB. Sprint 5 adiciona Redis e MinIO."""
+    """Checa dependências (DB; Sprint 5 adiciona Redis)."""
     checks: dict[str, str] = {}
 
     try:

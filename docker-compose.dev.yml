@@ -35,7 +35,8 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
-      - ./scripts:/scripts
+      - ./scripts:/app/scripts                # python -m scripts.seed_from_legacy
+      - ./legacy:/app/legacy:ro               # fonte do seed
     environment:
       - APP_ENV=dev
       - LOG_LEVEL=debug

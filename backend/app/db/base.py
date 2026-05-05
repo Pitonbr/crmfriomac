@@ -1,8 +1,4 @@
-"""Declarative base e mixins comuns.
-
-Convenções de nomenclatura aplicadas a TODOS os índices/constraints
-para Alembic detectar mudanças corretamente.
-"""
+"""Declarative base e mixins comuns."""
 
 from datetime import UTC, datetime
 from typing import Any
@@ -22,13 +18,8 @@ NAMING_CONVENTION = {
 
 
 class Base(DeclarativeBase):
-    """Base declarative com metadata + naming convention configurados."""
-
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
-
-    type_annotation_map: dict[Any, Any] = {
-        UUID: PG_UUID(as_uuid=True),
-    }
+    type_annotation_map: dict[Any, Any] = {UUID: PG_UUID(as_uuid=True)}
 
 
 def utcnow() -> datetime:
@@ -36,8 +27,6 @@ def utcnow() -> datetime:
 
 
 class TimestampMixin:
-    """Adiciona criado_em/atualizado_em automáticos."""
-
     criado_em: Mapped[datetime] = mapped_column(default=utcnow, nullable=False)
     atualizado_em: Mapped[datetime] = mapped_column(
         default=utcnow, onupdate=utcnow, nullable=False
@@ -45,15 +34,20 @@ class TimestampMixin:
 
 
 class UUIDPrimaryKeyMixin:
-    """PK em UUIDv4 gerado no app (evita round-trip ao DB)."""
-
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
 
 
 class TenantMixin:
-    """Adiciona tenant_id NOT NULL para isolamento RLS.
-
-    Usar em TODA tabela de negócio (não em `tenants` nem `auth_login_attempts`).
-    """
+    """tenant_id NOT NULL — isola via RLS no Postgres."""
 
     tenant_id: Mapped[UUID] = mapped_column(nullable=False, index=True)
+
+
+class SoftDeleteMixin:
+    """Soft-delete: queries normais filtram excluido_em IS NULL."""
+
+    excluido_em: Mapped[datetime | None] = mapped_column(nullable=True, index=True)
+
+    @property
+    def excluido(self) -> bool:
+        return self.excluido_em is not None
