@@ -1,0 +1,58 @@
+/* ════════════════════════════════════════════════════════════════
+   Tokens de design (extraídos do styles.css legado).
+   Disponíveis globalmente via var(--token).
+   Reusar daqui em CSS Modules futuros para evitar duplicação.
+══════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Brand ──────────────────────────────────────────────────── */
+  --primary:       #0B2D54;
+  --primary-light: #1A4A82;
+  --primary-dark:  #071D38;
+  --accent:        #E8500A;
+  --accent-light:  #FF6B2B;
+  --accent-hover:  #C93F00;
+
+  /* ── Semânticas ─────────────────────────────────────────────── */
+  --success:    #16A34A;
+  --success-bg: #DCFCE7;
+  --warning:    #D97706;
+  --warning-bg: #FEF3C7;
+  --danger:     #DC2626;
+  --danger-bg:  #FEE2E2;
+  --info:       #0EA5E9;
+  --info-bg:    #E0F2FE;
+  --purple:     #7C3AED;
+  --purple-bg:  #EDE9FE;
+
+  /* ── Superfícies / texto ────────────────────────────────────── */
+  --bg:        #F0F4F8;
+  --surface:   #FFFFFF;
+  --surface-2: #F8FAFC;
+  --border:    #E2E8F0;
+  --border-2:  #CBD5E1;
+
+  --text-1:   #0F172A;
+  --text-2:   #475569;
+  --text-3:   #94A3B8;
+  --text-inv: #FFFFFF;
+
+  /* ── Layout ─────────────────────────────────────────────────── */
+  --sidebar-w: 260px;
+  --header-h:  64px;
+
+  /* ── Geometria ──────────────────────────────────────────────── */
+  --radius:    8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+  --shadow:    0 4px 12px rgba(0,0,0,.10), 0 2px 4px rgba(0,0,0,.06);
+  --shadow-lg: 0 10px 30px rgba(0,0,0,.12), 0 4px 10px rgba(0,0,0,.08);
+
+  /* ── Movimento ──────────────────────────────────────────────── */
+  --transition: all .18s ease;
+
+  /* ── Novos (não existiam no legado) ─────────────────────────── */
+  --ring: 0 0 0 3px rgba(26, 74, 130, .25);   /* unifica focus-ring */
+  --border-w: 1.5px;                          /* unifica largura de borda */
+}

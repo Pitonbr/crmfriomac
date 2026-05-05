@@ -1,0 +1,10 @@
+/* ════════════════════════════════════════════════════════════════
+   Friomac CRM — Entry CSS
+   Importa, na ordem correta, todos os arquivos de estilo.
+══════════════════════════════════════════════════════════════════ */
+
+@import './tokens.css';
+@import './globals.css';
+@import './legacy.css';   /* design system completo herdado da v1 */
+@import './a11y.css';     /* sobrescrita acessível */
+@import './welcome.css';  /* tela transitória do Sprint 1 */

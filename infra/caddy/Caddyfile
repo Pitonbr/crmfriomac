@@ -1,0 +1,49 @@
+# ════════════════════════════════════════════════════════════════
+#  Friomac CRM — Caddy reverse proxy
+#  Em dev: opcional (perfil "proxy"). Em prod: Let's Encrypt automático.
+# ════════════════════════════════════════════════════════════════
+
+{
+    # Diretivas globais
+    email admin@friomac.ind.br
+    # auto_https off               # descomente em dev sem domínio público
+}
+
+{$DOMAIN:localhost} {
+    encode zstd gzip
+
+    # ── Cabeçalhos de segurança ─────────────────────────────────
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        X-Frame-Options "DENY"
+
+        # CSP — restritiva. Ajustar em Sprint 6 se necessário (e.g. CDN externa).
+        Content-Security-Policy "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; connect-src 'self' wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+        # Remove header Server padrão
+        -Server
+    }
+
+    # ── API + WS + Admin → backend ──────────────────────────────
+    @api path /api/* /ws/* /admin/*
+    handle @api {
+        reverse_proxy backend:8000 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # ── Frontend (SPA) ──────────────────────────────────────────
+    handle {
+        reverse_proxy frontend:80
+    }
+
+    # ── TLS ─────────────────────────────────────────────────────
+    # Em prod, descomente o bloco abaixo conforme provedor DNS:
+    # tls {
+    #     dns cloudflare {env.CF_API_TOKEN}
+    # }
+}

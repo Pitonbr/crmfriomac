@@ -1,0 +1,59 @@
+/* ════════════════════════════════════════════════════════════════
+   Acessibilidade — corrige críticos do legado:
+   - Foco invisível em botões/links/cards
+   - Animações ignorando preferência do usuário
+   - Falta de utility .sr-only
+══════════════════════════════════════════════════════════════════ */
+
+/* Foco visível em qualquer elemento interativo via teclado */
+*:focus-visible {
+  outline: 2px solid var(--primary-light);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* Remove outline default em foco com mouse (não é teclado) */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Respeita usuários com sensibilidade a movimento */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Esconde visualmente mas mantém disponível para leitor de tela */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link (Sprint 2 quando AppShell montar) */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--primary);
+  color: var(--text-inv);
+  padding: 8px 16px;
+  z-index: 10000;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 0;
+}
