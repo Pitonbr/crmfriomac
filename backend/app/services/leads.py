@@ -2,18 +2,26 @@
 
 Dispara eventos WebSocket via `ws_manager` em todas as mutações para
 que clients abertos no Kanban atualizem em tempo real.
+
+Em GANHO, cria automaticamente:
+- Entrega (status=planejada, prazo +30 dias por padrão)
+- Comissão (se tiver representante; usa rep.comissao_pct sobre lead.valor)
 """
 
-from datetime import timedelta
+from datetime import date, timedelta
+from decimal import Decimal
 from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import utcnow
+from app.models.comissao import Comissao
+from app.models.entrega import Entrega
 from app.models.lead import Lead, LeadStatus
 from app.models.observacao import Observacao, ObservacaoTipo
 from app.repositories.leads import LeadRepository
 from app.repositories.observacoes import ObservacaoRepository
+from app.repositories.representantes import RepresentanteRepository
 from app.repositories.stages import StageRepository
 from app.schemas.lead import LeadCreate
 from app.ws.events import WsEvent
@@ -203,6 +211,36 @@ class LeadService:
                 tipo=ObservacaoTipo.SISTEMA,
             )
         )
+
+        # Em GANHO: criar entrega planejada + comissão (se houver representante)
+        if resultado == LeadStatus.GANHO:
+            entrega = Entrega(
+                id=uuid4(),
+                tenant_id=tenant_id,
+                lead_id=lead.id,
+                prazo_estimado=date.today() + timedelta(days=30),
+                status="planejada",
+            )
+            self.session.add(entrega)
+
+            if lead.representante_id:
+                rep_repo = RepresentanteRepository(self.session)
+                rep = await rep_repo.get_by_id(lead.representante_id)
+                if rep is not None:
+                    pct = Decimal(rep.comissao_pct)
+                    valor_com = (Decimal(lead.valor) * pct / Decimal(100)).quantize(Decimal("0.01"))
+                    comissao = Comissao(
+                        id=uuid4(),
+                        tenant_id=tenant_id,
+                        representante_id=rep.id,
+                        lead_id=lead.id,
+                        valor_base=lead.valor,
+                        percentual=pct,
+                        valor_comissao=valor_com,
+                        status="pendente",
+                    )
+                    self.session.add(comissao)
+
         await self.session.flush()
 
         await ws_manager.broadcast_tenant(
@@ -211,7 +249,7 @@ class LeadService:
                 tenant_id=tenant_id,
                 actor_id=autor_id,
                 actor_nome=autor_nome,
-                payload={"lead_id": str(lead.id), "resultado": resultado.value},
+                payload={"lead_id": str(lead.id), "resultado": str(resultado)},
             )
         )
         return lead

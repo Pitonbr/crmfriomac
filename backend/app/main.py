@@ -7,6 +7,7 @@ import structlog
 from fastapi import FastAPI
 from sqlalchemy import text
 
+from app.admin.panel import setup_admin
 from app.api.v1 import router as api_v1
 from app.config import settings
 from app.db.session import engine
@@ -46,6 +47,9 @@ app = FastAPI(
 app.add_middleware(RequestIdMiddleware)
 app.include_router(api_v1)
 app.include_router(ws_router)
+
+# SQLAdmin painel em /admin (restrito a role=master)
+setup_admin(app, secret_key=settings.jwt_secret.get_secret_value())
 
 
 @app.get("/health", tags=["meta"], summary="Liveness probe")

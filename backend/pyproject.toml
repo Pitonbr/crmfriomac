@@ -44,6 +44,7 @@ dependencies = [
 
     # Admin
     "sqladmin>=0.20",
+    "itsdangerous>=2.2",          # dep do SessionMiddleware usado pelo SQLAdmin
 
     # Rate limit
     "slowapi>=0.1.9",

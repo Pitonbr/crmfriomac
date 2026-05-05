@@ -3,8 +3,11 @@
 from app.models.anexo import Anexo
 from app.models.auth import AuthLoginAttempt, AuthRefreshToken
 from app.models.cliente import Cliente
+from app.models.comissao import Comissao, ComissaoStatus
+from app.models.entrega import Entrega, EntregaStatus
 from app.models.lead import Lead, LeadPrioridade, LeadStatus
 from app.models.observacao import Observacao, ObservacaoTipo
+from app.models.orcamento import Orcamento, OrcamentoStatus
 from app.models.representante import CanalRepresentante, Representante
 from app.models.stage import Stage
 from app.models.tenant import Tenant
@@ -16,11 +19,17 @@ __all__ = [
     "AuthRefreshToken",
     "CanalRepresentante",
     "Cliente",
+    "Comissao",
+    "ComissaoStatus",
+    "Entrega",
+    "EntregaStatus",
     "Lead",
     "LeadPrioridade",
     "LeadStatus",
     "Observacao",
     "ObservacaoTipo",
+    "Orcamento",
+    "OrcamentoStatus",
     "Representante",
     "Stage",
     "Tenant",
