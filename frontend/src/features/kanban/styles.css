@@ -1,0 +1,183 @@
+/* Estilos próprios do Kanban (complementam o legacy.css). */
+
+.kb-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.kb-toolbar h1 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-1);
+  margin-right: auto;
+}
+
+.kb-toolbar input[type='search'] {
+  flex: 0 0 280px;
+  height: 36px;
+  padding: 0 12px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font-size: 0.875rem;
+}
+
+.kb-board {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 280px;
+  gap: 12px;
+  padding: 16px 24px 24px;
+  overflow-x: auto;
+  height: calc(100vh - var(--header-h) - 64px);
+  scroll-snap-type: x proximity;
+}
+
+.kb-column {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-2);
+  border-radius: var(--radius-lg);
+  scroll-snap-align: start;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.kb-column.drop-active {
+  outline: 2px solid var(--primary-light);
+  outline-offset: -2px;
+}
+
+.kb-col-header {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kb-col-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-1);
+  flex: 1;
+}
+
+.kb-col-count {
+  font-size: 0.75rem;
+  color: var(--text-2);
+  background: var(--surface);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+.kb-col-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kb-card {
+  background: var(--surface);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  cursor: grab;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+  text-align: left;
+  width: 100%;
+  display: block;
+}
+
+.kb-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+  border-color: var(--border-2);
+}
+
+.kb-card.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+  transform: rotate(-1deg);
+}
+
+.kb-card-codigo {
+  font-size: 0.7rem;
+  color: var(--text-3);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.kb-card-titulo {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-1);
+  margin: 4px 0;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.kb-card-valor {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--success);
+  margin: 6px 0;
+}
+
+.kb-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.kb-card-tag {
+  font-size: 0.7rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--text-2);
+}
+
+.kb-card-prio {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-top: 6px;
+  display: inline-block;
+}
+
+.kb-card-prio.alta {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.kb-card-prio.media {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.kb-card-prio.baixa {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+.kb-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--text-2);
+}

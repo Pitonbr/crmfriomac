@@ -1,0 +1,117 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
+import {
+  addObservacao,
+  concluirLead,
+  createLead,
+  type LeadCreatePayload,
+  type LeadFilters,
+  deleteLead,
+  getLead,
+  listLeads,
+  listObservacoes,
+  moveLeadStage,
+} from '@/api/leads';
+import type { Lead } from '@/api/schemas';
+
+export const LEADS_KEY = ['leads'] as const;
+
+export function useLeads(filters: LeadFilters = {}) {
+  return useQuery({
+    queryKey: [...LEADS_KEY, filters],
+    queryFn: () => listLeads(filters),
+    staleTime: 30_000,
+  });
+}
+
+export function useLead(id: string | undefined) {
+  return useQuery({
+    queryKey: [...LEADS_KEY, id],
+    queryFn: () => getLead(id!),
+    enabled: !!id,
+    staleTime: 30_000,
+  });
+}
+
+export function useObservacoes(leadId: string | undefined) {
+  return useQuery({
+    queryKey: [...LEADS_KEY, leadId, 'observacoes'],
+    queryFn: () => listObservacoes(leadId!),
+    enabled: !!leadId,
+    staleTime: 30_000,
+  });
+}
+
+export function useCreateLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: LeadCreatePayload) => createLead(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: LEADS_KEY }),
+  });
+}
+
+/**
+ * Mover stage com optimistic update (essencial para Kanban DnD).
+ * Atualiza cache local imediatamente; em erro, faz rollback.
+ */
+export function useMoveLeadStage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ leadId, stage_id }: { leadId: string; stage_id: string }) =>
+      moveLeadStage(leadId, stage_id),
+
+    onMutate: async ({ leadId, stage_id }) => {
+      await qc.cancelQueries({ queryKey: LEADS_KEY });
+      const snapshots = qc.getQueriesData<Lead[]>({ queryKey: LEADS_KEY });
+
+      snapshots.forEach(([key, data]) => {
+        if (!data) return;
+        qc.setQueryData<Lead[]>(
+          key,
+          data.map((l) => (l.id === leadId ? { ...l, stage_id } : l)),
+        );
+      });
+      return { snapshots };
+    },
+
+    onError: (_err, _vars, ctx) => {
+      ctx?.snapshots?.forEach(([key, data]) => qc.setQueryData(key, data));
+    },
+
+    onSettled: () => qc.invalidateQueries({ queryKey: LEADS_KEY }),
+  });
+}
+
+export function useConcluirLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      leadId,
+      resultado,
+      motivo_perda,
+    }: {
+      leadId: string;
+      resultado: 'ganho' | 'perdido';
+      motivo_perda?: string;
+    }) => concluirLead(leadId, resultado, motivo_perda),
+    onSuccess: () => qc.invalidateQueries({ queryKey: LEADS_KEY }),
+  });
+}
+
+export function useDeleteLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (leadId: string) => deleteLead(leadId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: LEADS_KEY }),
+  });
+}
+
+export function useAddObservacao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ leadId, texto }: { leadId: string; texto: string }) =>
+      addObservacao(leadId, texto),
+    onSuccess: (_data, vars) =>
+      qc.invalidateQueries({ queryKey: [...LEADS_KEY, vars.leadId, 'observacoes'] }),
+  });
+}

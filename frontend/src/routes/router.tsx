@@ -3,6 +3,8 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { DashboardPlaceholder } from '@/features/dashboard/DashboardPlaceholder';
 import { LoginScreen } from '@/features/auth/LoginScreen';
+import { KanbanPage } from '@/features/kanban/KanbanPage';
+import { LeadModal } from '@/features/kanban/LeadModal';
 import { NotImplementedPage } from '@/features/NotImplementedPage';
 
 import { RequireAuth, RoleGuard } from './guards';
@@ -22,7 +24,11 @@ export const router = createBrowserRouter([
           { path: 'dashboard', element: <DashboardPlaceholder /> },
           {
             path: 'kanban',
-            element: <NotImplementedPage titulo="Gestão de Leads (Kanban)" sprint="Sprint 3" />,
+            element: <KanbanPage />,
+            children: [
+              // Modal route — abre o LeadModal sobre o board ao acessar /kanban/leads/:leadId
+              { path: 'leads/:leadId', element: <LeadModal /> },
+            ],
           },
           {
             path: 'orcamentos',
@@ -44,13 +50,14 @@ export const router = createBrowserRouter([
             path: 'prazos',
             element: <NotImplementedPage titulo="Prazo de Entrega" sprint="Sprint 4" />,
           },
-          // Restritas a master
           {
             element: <RoleGuard allowed={['master']} />,
             children: [
               {
                 path: 'vendedores',
-                element: <NotImplementedPage titulo="Vendedores & Representantes" sprint="Sprint 4" />,
+                element: (
+                  <NotImplementedPage titulo="Vendedores & Representantes" sprint="Sprint 4" />
+                ),
               },
               {
                 path: 'config',
