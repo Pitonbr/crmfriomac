@@ -64,8 +64,19 @@ services:
       - "9101:9001"
 
   worker:
-    # Sprint 5 sobe arq; por enquanto desabilitado
-    profiles: ["worker"]
+    # Sprint 5 ativo: arq workers rodando jobs assíncronos (SLA, etc)
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    image: friomac/crm-backend:latest
+    command: ["arq", "app.workers.arq_worker.WorkerSettings", "--watch", "/app"]
+    volumes:
+      - ./backend:/app
+      - ./scripts:/app/scripts
+    environment:
+      - APP_ENV=dev
+      - LOG_LEVEL=info
 
   pg-backup:
     profiles: ["backup"]          # só sobe quando explicitamente pedido

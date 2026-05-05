@@ -219,6 +219,37 @@ export const MesAggSchema = z.object({
 });
 export type MesAgg = z.infer<typeof MesAggSchema>;
 
+// ── Notificacao ─────────────────────────────────────────────────────
+export const NotificacaoTipoSchema = z.enum([
+  'sla_estourando',
+  'sla_estourado',
+  'lead_ganho',
+  'lead_perdido',
+  'comissao_nova',
+  'entrega_proxima',
+  'sistema',
+]);
+export type NotificacaoTipo = z.infer<typeof NotificacaoTipoSchema>;
+
+export const NotificacaoSchema = z.object({
+  id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  tipo: NotificacaoTipoSchema,
+  titulo: z.string(),
+  mensagem: z.string(),
+  link: z.string().nullable().optional(),
+  lida_em: z.string().nullable().optional(),
+  criado_em: z.string(),
+});
+export type Notificacao = z.infer<typeof NotificacaoSchema>;
+
+export const NotificacoesUnreadSchema = z.object({
+  total: z.number().int(),
+  unread: z.number().int(),
+  items: z.array(NotificacaoSchema),
+});
+export type NotificacoesUnread = z.infer<typeof NotificacoesUnreadSchema>;
+
 export const DashboardKPIsSchema = z.object({
   meta_anual: z.coerce.number(),
   total_orcado: z.coerce.number(),

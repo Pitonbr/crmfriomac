@@ -2,6 +2,9 @@ import { useNavigate } from 'react-router-dom';
 
 import { useCurrentUser, useLogout } from '@/hooks/useAuth';
 
+import { NotificationBell } from './NotificationBell';
+import './notification-bell.css';
+
 const ROLE_LABEL: Record<string, string> = {
   master: 'Administrador',
   vendedor: 'Vendedor',
@@ -40,6 +43,8 @@ export function TopHeader() {
       <div className="header-spacer" />
 
       <div className="header-actions">
+        <NotificationBell />
+
         <div className="header-user" aria-label="Usuário corrente">
           <div className="user-avatar" style={{ width: 30, height: 30, fontSize: '.75rem' }}>
             {initials}

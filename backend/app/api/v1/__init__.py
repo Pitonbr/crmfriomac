@@ -10,9 +10,11 @@ from app.api.v1 import (
     entregas,
     kpis,
     leads,
+    notificacoes,
     orcamentos,
     representantes,
     stages,
+    webhooks,
 )
 
 router = APIRouter(prefix="/api/v1")
@@ -26,3 +28,5 @@ router.include_router(comissoes.router)
 router.include_router(entregas.router)
 router.include_router(anexos.router)
 router.include_router(kpis.router)
+router.include_router(notificacoes.router)
+router.include_router(webhooks.router)
