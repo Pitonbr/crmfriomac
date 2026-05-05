@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import MetaData
+from sqlalchemy import DateTime, MetaData
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -19,7 +19,11 @@ NAMING_CONVENTION = {
 
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
-    type_annotation_map: dict[Any, Any] = {UUID: PG_UUID(as_uuid=True)}
+    type_annotation_map: dict[Any, Any] = {
+        UUID: PG_UUID(as_uuid=True),
+        # Mapear todos os datetime para TIMESTAMPTZ (compatível com tzinfo=UTC)
+        datetime: DateTime(timezone=True),
+    }
 
 
 def utcnow() -> datetime:

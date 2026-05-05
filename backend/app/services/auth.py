@@ -84,10 +84,10 @@ class AuthService:
             await self.session.flush()
 
         access, _ = issue_access_token(
-            user_id=user.id, tenant_id=user.tenant_id, role=user.role.value
+            user_id=user.id, tenant_id=user.tenant_id, role=user.role
         )
         refresh, jti, _ = issue_refresh_token(
-            user_id=user.id, tenant_id=user.tenant_id, role=user.role.value
+            user_id=user.id, tenant_id=user.tenant_id, role=user.role
         )
         await self.tokens.create(
             user_id=user.id,
@@ -131,10 +131,10 @@ class AuthService:
         await self.tokens.revoke(stored)
 
         access, _ = issue_access_token(
-            user_id=user.id, tenant_id=user.tenant_id, role=user.role.value
+            user_id=user.id, tenant_id=user.tenant_id, role=user.role
         )
         new_refresh, jti, _ = issue_refresh_token(
-            user_id=user.id, tenant_id=user.tenant_id, role=user.role.value
+            user_id=user.id, tenant_id=user.tenant_id, role=user.role
         )
         await self.tokens.create(
             user_id=user.id,

@@ -23,6 +23,8 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "exactOptionalPropertyTypes": false,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
 
     "baseUrl": "./src",
     "paths": {
@@ -31,7 +33,16 @@
 
     "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"]
   },
-  "include": ["src", "vitest.config.ts", "playwright.config.ts"],
-  "exclude": ["node_modules", "dist", "playwright-report", "test-results"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "playwright-report",
+    "test-results",
+    "coverage",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "eslint.config.js"
+  ]
 }

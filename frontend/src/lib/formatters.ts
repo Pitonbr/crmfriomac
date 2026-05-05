@@ -11,8 +11,6 @@ const BRL = new Intl.NumberFormat('pt-BR', {
   minimumFractionDigits: 2,
 });
 
-const NUMBER = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
-
 export function formatBRL(value: number | string | null | undefined): string {
   if (value == null || value === '') return 'R$ 0,00';
   const n = typeof value === 'string' ? Number(value) : value;

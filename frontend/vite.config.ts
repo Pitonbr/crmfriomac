@@ -11,10 +11,7 @@ export default defineConfig({
     tsconfigPaths(),
     checker({
       typescript: true,
-      eslint: {
-        lintCommand: 'eslint "src/**/*.{ts,tsx}"',
-        useFlatConfig: true,
-      },
+      // ESLint roda em CI / manualmente (pnpm lint). Em dev mantém só typecheck.
     }),
   ],
   server: {

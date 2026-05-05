@@ -42,7 +42,7 @@ async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
     async with SessionLocal() as session:
         try:
             await set_rls_context(
-                session, tenant_id=user.tenant_id, user_id=user.id, role=user.role.value
+                session, tenant_id=user.tenant_id, user_id=user.id, role=user.role
             )
             yield session
             await session.commit()

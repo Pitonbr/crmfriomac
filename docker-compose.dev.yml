@@ -16,7 +16,8 @@ services:
     image: friomac/crm-frontend:dev
     command: ["pnpm", "dev", "--host", "0.0.0.0"]
     ports:
-      - "5173:5173"
+      # 5174 no host para evitar conflito com outro Vite local
+      - "5174:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules        # anonymous volume preserva node_modules do container
@@ -32,7 +33,8 @@ services:
       target: dev
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     ports:
-      - "8000:8000"
+      # 8001 no host para evitar conflito com serviço local na 8000
+      - "8001:8000"
     volumes:
       - ./backend:/app
       - ./scripts:/app/scripts                # python -m scripts.seed_from_legacy
@@ -45,21 +47,25 @@ services:
 
   db:
     ports:
-      - "5432:5432"
+      # 5433 no host (evita conflito com Postgres local). Internamente continua 5432.
+      - "5433:5432"
 
   redis:
-    ports:
-      - "6379:6379"
+    # Sem porta exposta — acesso via `docker compose exec redis redis-cli`
+    # Evita conflito com Redis local em 6379
+    ports: []
 
   minio:
+    # Portas remapeadas para evitar conflitos comuns com outros serviços
+    # API S3: localhost:9100 (interno continua 9000) — backend usa nome interno
+    # Console: localhost:9101
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9100:9000"
+      - "9101:9001"
 
   worker:
-    command: ["arq", "app.workers.arq_worker.WorkerSettings", "--watch", "/app"]
-    volumes:
-      - ./backend:/app
+    # Sprint 5 sobe arq; por enquanto desabilitado
+    profiles: ["worker"]
 
   pg-backup:
     profiles: ["backup"]          # só sobe quando explicitamente pedido
