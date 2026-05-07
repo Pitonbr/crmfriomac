@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 
 import { AppShell } from '@/components/layout/AppShell';
+import { ChangePasswordPage } from '@/features/auth/ChangePasswordPage';
 import { LoginScreen } from '@/features/auth/LoginScreen';
 import { CampanhasPlaceholder } from '@/features/campanhas/CampanhasPlaceholder';
 import { ClientesPage } from '@/features/clientes/ClientesPage';
@@ -21,8 +22,10 @@ export const router = createBrowserRouter([
     element: <LoginScreen />,
   },
   {
+    // Autenticado mas NÃO usa AppShell (não mostra sidebar com a senha provisória)
     element: <RequireAuth />,
     children: [
+      { path: '/change-password', element: <ChangePasswordPage /> },
       {
         element: <AppShell />,
         children: [

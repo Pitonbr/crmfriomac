@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { getCurrentUser, login, type LoginPayload, logout } from '@/api/auth';
+import {
+  changePassword,
+  type ChangePasswordPayload,
+  getCurrentUser,
+  login,
+  type LoginPayload,
+  logout,
+} from '@/api/auth';
 import { useAuthStore } from '@/store/authStore';
 
 const ME_KEY = ['auth', 'me'] as const;
@@ -37,6 +44,23 @@ export function useLogout() {
   return useMutation({
     mutationFn: logout,
     onSettled: () => {
+      clear();
+      qc.removeQueries({ queryKey: ME_KEY });
+      qc.clear();
+    },
+  });
+}
+
+/**
+ * Após troca, backend revoga refresh tokens e limpa cookies.
+ * Limpamos o cache local e forçamos novo login.
+ */
+export function useChangePassword() {
+  const qc = useQueryClient();
+  const clear = useAuthStore((s) => s.clear);
+  return useMutation({
+    mutationFn: (payload: ChangePasswordPayload) => changePassword(payload),
+    onSuccess: () => {
       clear();
       qc.removeQueries({ queryKey: ME_KEY });
       qc.clear();

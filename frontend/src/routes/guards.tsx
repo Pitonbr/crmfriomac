@@ -4,7 +4,10 @@ import { useCurrentUser } from '@/hooks/useAuth';
 
 import type { UserRole } from '@/api/schemas';
 
-/** Redireciona para /login se não autenticado. Mostra splash enquanto valida. */
+/**
+ * Redireciona para /login se não autenticado.
+ * Se o user tem senha_provisoria=true, força /change-password antes de qualquer outra rota.
+ */
 export function RequireAuth() {
   const { data: user, isPending, isError } = useCurrentUser();
   const location = useLocation();
@@ -14,6 +17,10 @@ export function RequireAuth() {
   }
   if (isError || !user) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+  // Senha provisória: bloqueia tudo até trocar (exceto a própria rota /change-password)
+  if (user.senha_provisoria && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
   }
   return <Outlet />;
 }

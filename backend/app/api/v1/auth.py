@@ -5,16 +5,26 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.deps.auth import CurrentUserDep
-from app.deps.db import get_session_anonymous
-from app.schemas.auth import CurrentUser, LoginRequest, LoginResponse
+from app.deps.auth import CurrentUserDep, get_current_user
+from app.deps.db import get_session, get_session_anonymous
+from app.schemas.auth import (
+    ChangePasswordRequest,
+    CurrentUser,
+    LoginRequest,
+    LoginResponse,
+)
 from app.security.cookies import (
     REFRESH_COOKIE,
     clear_auth_cookies,
     set_access_cookie,
     set_refresh_cookie,
 )
-from app.services.auth import AccountLocked, AuthService, InvalidCredentials
+from app.services.auth import (
+    AccountLocked,
+    AuthService,
+    InvalidCredentials,
+    WeakPassword,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -113,6 +123,43 @@ async def logout(
     summary="Perfil do usuário autenticado",
 )
 async def me(user: CurrentUserDep) -> CurrentUser:
+    return CurrentUser.model_validate(user)
+
+
+@router.post(
+    "/change-password",
+    response_model=CurrentUser,
+    status_code=status.HTTP_200_OK,
+    summary="Trocar senha do usuário corrente (zera flag senha_provisoria)",
+)
+async def change_password(
+    payload: ChangePasswordRequest,
+    user: CurrentUserDep,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    response: Response,
+) -> CurrentUser:
+    if payload.senha_nova != payload.senha_confirmacao:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="senha_nova e senha_confirmacao devem ser iguais",
+        )
+
+    service = AuthService(session)
+    try:
+        await service.change_password(
+            user=user, senha_atual=payload.senha_atual, senha_nova=payload.senha_nova
+        )
+    except InvalidCredentials as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e)
+        ) from e
+    except WeakPassword as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        ) from e
+
+    # Como revogamos todos refresh tokens, força relogin: limpa cookies
+    clear_auth_cookies(response)
     return CurrentUser.model_validate(user)
 
 

@@ -34,6 +34,8 @@ class User(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
     avatar: Mapped[str | None] = mapped_column(String(8), nullable=True)
     grupo: Mapped[str | None] = mapped_column(String(80), nullable=True)
     ativo: Mapped[bool] = mapped_column(default=True, nullable=False)
+    # Quando true, frontend força redirect para /change-password antes de outra tela
+    senha_provisoria: Mapped[bool] = mapped_column(default=False, nullable=False)
 
     def __repr__(self) -> str:
         return f"<User {self.email} ({self.role})>"

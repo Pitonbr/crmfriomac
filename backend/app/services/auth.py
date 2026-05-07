@@ -33,6 +33,10 @@ class AccountLocked(AuthError):
     """Conta bloqueada por excesso de tentativas."""
 
 
+class WeakPassword(AuthError):
+    """Nova senha não atende aos requisitos."""
+
+
 @dataclass(frozen=True)
 class IssuedTokens:
     access_token: str
@@ -158,3 +162,28 @@ class AuthService:
         stored = await self.tokens.get_active_by_jti(payload.jti)
         if stored is not None:
             await self.tokens.revoke(stored)
+
+    async def change_password(
+        self,
+        *,
+        user: User,
+        senha_atual: str,
+        senha_nova: str,
+    ) -> None:
+        """Troca senha do user logado.
+
+        - Valida senha atual.
+        - Recusa se a nova senha for igual à atual.
+        - Hash novo (Argon2) + zera a flag `senha_provisoria`.
+        - Revoga todos os refresh tokens do user (forçar relogin em outros devices).
+        """
+        if not verify_password(senha_atual, user.senha_hash):
+            raise InvalidCredentials("senha atual incorreta")
+
+        if verify_password(senha_nova, user.senha_hash):
+            raise WeakPassword("a nova senha não pode ser igual à atual")
+
+        user.senha_hash = hash_password(senha_nova)
+        user.senha_provisoria = False
+        await self.tokens.revoke_all_for_user(user.id)
+        await self.session.flush()

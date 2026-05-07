@@ -25,3 +25,18 @@ export async function getCurrentUser(): Promise<CurrentUser> {
   const data = await http<unknown>('/api/v1/auth/me');
   return CurrentUserSchema.parse(data);
 }
+
+export interface ChangePasswordPayload {
+  senha_atual: string;
+  senha_nova: string;
+  senha_confirmacao: string;
+}
+
+export async function changePassword(payload: ChangePasswordPayload): Promise<CurrentUser> {
+  const data = await http<unknown>('/api/v1/auth/change-password', {
+    method: 'POST',
+    body: payload,
+    skipRefresh: true,
+  });
+  return CurrentUserSchema.parse(data);
+}

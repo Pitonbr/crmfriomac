@@ -37,6 +37,10 @@ export function LoginScreen() {
     try {
       const { user: logged } = await login.mutateAsync(values);
       toast.success(`Bem-vindo, ${logged.nome.split(' ')[0]}!`);
+      if (logged.senha_provisoria) {
+        navigate('/change-password', { replace: true });
+        return;
+      }
       const from = (location.state as { from?: Location } | null)?.from?.pathname ?? '/dashboard';
       navigate(from, { replace: true });
     } catch (err) {

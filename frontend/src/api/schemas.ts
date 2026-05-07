@@ -12,6 +12,7 @@ export const CurrentUserSchema = z.object({
   role: UserRoleSchema,
   avatar: z.string().nullable().optional(),
   grupo: z.string().nullable().optional(),
+  senha_provisoria: z.boolean().default(false),
 });
 export type CurrentUser = z.infer<typeof CurrentUserSchema>;
 
