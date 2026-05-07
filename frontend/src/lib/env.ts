@@ -1,11 +1,15 @@
 /**
  * Environment variables tipadas + validadas com Zod.
+ *
+ * Em DEV (Vite proxy): VITE_API_BASE_URL/VITE_WS_URL ficam vazios → fetch relativo
+ * (mesmo origin do frontend, browser não vê cross-site).
+ * Em PROD (Caddy): também same-origin, então pode ficar vazio.
  */
 import { z } from 'zod';
 
 const envSchema = z.object({
-  VITE_API_BASE_URL: z.string().url().default('http://localhost:8000'),
-  VITE_WS_URL: z.string().default('ws://localhost:8000'),
+  VITE_API_BASE_URL: z.string().default(''),
+  VITE_WS_URL: z.string().default(''),
   VITE_APP_VERSION: z.string().optional(),
 });
 

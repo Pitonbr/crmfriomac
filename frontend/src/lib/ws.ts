@@ -49,7 +49,11 @@ class WsClient {
   }
 
   private _open(): void {
-    const url = `${env.VITE_WS_URL}/ws`;
+    // Se VITE_WS_URL for vazio (default em dev/prod), usa same-origin via proxy
+    const base =
+      env.VITE_WS_URL ||
+      `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}`;
+    const url = `${base}/ws`;
     try {
       this.socket = new WebSocket(url);
     } catch {

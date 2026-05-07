@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.admin.panel import setup_admin
@@ -43,6 +44,19 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
     lifespan=lifespan,
 )
+
+# CORS — em dev permite origens explícitas (Vite). Em prod (same-origin via Caddy)
+# cors_origins pode ser vazio. allow_credentials=True exige origens explícitas.
+_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+if _origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["X-Request-Id"],
+    )
 
 app.add_middleware(RequestIdMiddleware)
 app.include_router(api_v1)

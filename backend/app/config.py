@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     app_env: Literal["dev", "test", "production"] = "dev"
     log_level: Literal["debug", "info", "warning", "error"] = "info"
 
+    # CORS: lista de origens permitidas em dev (em prod fica same-origin via Caddy)
+    cors_origins: str = "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5174"
+
     # ── DB ───────────────────────────────────────────────────────
     database_url: PostgresDsn
 
