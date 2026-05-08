@@ -15,7 +15,7 @@ import { PrazosPage } from '@/features/prazos/PrazosPage';
 import { RelatorioVendasPage } from '@/features/relatorio-vendas/RelatorioVendasPage';
 import { VendedoresPage } from '@/features/vendedores/VendedoresPage';
 
-import { RequireAuth, RoleGuard } from './guards';
+import { RequireAuth } from './guards';
 
 export const router = createBrowserRouter([
   {

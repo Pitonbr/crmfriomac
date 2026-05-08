@@ -55,13 +55,13 @@ shell-db:                   ## psql no banco
 
 # ── Banco e seed ────────────────────────────────────────────────
 migrate:                    ## Aplica migrations (alembic upgrade head)
-	$(DC) run --rm backend alembic upgrade head
+	$(DC_DEV) run --rm backend alembic upgrade head
 
 revision:                   ## Cria nova revisão Alembic. Uso: make revision m="descrição"
-	$(DC) run --rm backend alembic revision --autogenerate -m "$(m)"
+	$(DC_DEV) run --rm backend alembic revision --autogenerate -m "$(m)"
 
 seed:                       ## Popula tenant + dados legados
-	$(DC) run --rm backend python -m scripts.seed_from_legacy
+	$(DC_DEV) run --rm backend python -m scripts.seed_from_legacy
 
 # ── Testes ──────────────────────────────────────────────────────
 test: test-backend test-frontend  ## Roda todos os testes
