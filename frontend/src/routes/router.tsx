@@ -3,7 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { ChangePasswordPage } from '@/features/auth/ChangePasswordPage';
 import { LoginScreen } from '@/features/auth/LoginScreen';
-import { CampanhasPlaceholder } from '@/features/campanhas/CampanhasPlaceholder';
+import { CampanhasPage } from '@/features/campanhas/CampanhasPage';
 import { ClientesPage } from '@/features/clientes/ClientesPage';
 import { ComissoesPage } from '@/features/comissoes/ComissoesPage';
 import { ConfigPage } from '@/features/config/ConfigPage';
@@ -12,6 +12,7 @@ import { KanbanPage } from '@/features/kanban/KanbanPage';
 import { LeadModal } from '@/features/kanban/LeadModal';
 import { OrcamentosPage } from '@/features/orcamentos/OrcamentosPage';
 import { PrazosPage } from '@/features/prazos/PrazosPage';
+import { RelatorioVendasPage } from '@/features/relatorio-vendas/RelatorioVendasPage';
 import { VendedoresPage } from '@/features/vendedores/VendedoresPage';
 
 import { RequireAuth, RoleGuard } from './guards';
@@ -38,16 +39,12 @@ export const router = createBrowserRouter([
           },
           { path: 'orcamentos', element: <OrcamentosPage /> },
           { path: 'clientes', element: <ClientesPage /> },
-          { path: 'campanhas', element: <CampanhasPlaceholder /> },
+          { path: 'campanhas', element: <CampanhasPage /> },
+          { path: 'relatorio-vendas', element: <RelatorioVendasPage /> },
           { path: 'comissoes', element: <ComissoesPage /> },
           { path: 'prazos', element: <PrazosPage /> },
-          {
-            element: <RoleGuard allowed={['master']} />,
-            children: [
-              { path: 'vendedores', element: <VendedoresPage /> },
-              { path: 'config', element: <ConfigPage /> },
-            ],
-          },
+          { path: 'vendedores', element: <VendedoresPage /> },
+          { path: 'config', element: <ConfigPage /> },
         ],
       },
     ],

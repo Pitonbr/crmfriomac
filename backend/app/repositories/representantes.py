@@ -20,3 +20,13 @@ class RepresentanteRepository:
 
     async def get_by_id(self, rep_id: UUID) -> Representante | None:
         return await self.session.get(Representante, rep_id)
+
+    async def get_by_nome_parcial(self, nome_parcial: str, tenant_id: UUID) -> Representante | None:
+        stmt = (
+            select(Representante)
+            .where(Representante.tenant_id == tenant_id)
+            .where(Representante.nome.ilike(f"%{nome_parcial}%"))
+            .where(Representante.ativo.is_(True))
+            .limit(1)
+        )
+        return (await self.session.execute(stmt)).scalar_one_or_none()

@@ -1,11 +1,11 @@
 """Modelo Lead — oportunidade comercial."""
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, Index, Numeric, String, Text
+from sqlalchemy import Boolean, ForeignKey, Index, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -64,3 +64,15 @@ class Lead(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin, SoftDeleteMix
 
     ganho_em: Mapped[datetime | None] = mapped_column(nullable=True)
     perdido_em: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    # ── campos de acompanhamento comercial ──────────────────────────
+    data_ultimo_contato: Mapped[datetime | None] = mapped_column(nullable=True)
+    tipo_ultimo_contato: Mapped[str | None] = mapped_column(String(30), nullable=True)  # telefone/whatsapp/email/presencial
+    projeto_2d_enviado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    projeto_2d_data: Mapped[date | None] = mapped_column(nullable=True)
+    projeto_3d_enviado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    projeto_3d_data: Mapped[date | None] = mapped_column(nullable=True)
+    probabilidade_override: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    valor_entrada: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    percentual_entrada: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    forma_pagamento: Mapped[str | None] = mapped_column(String(80), nullable=True)

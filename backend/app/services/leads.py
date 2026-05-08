@@ -212,7 +212,7 @@ class LeadService:
             )
         )
 
-        # Em GANHO: criar entrega planejada + comissão (se houver representante)
+        # Em GANHO: criar entrega planejada + comissões (regra 6% = Caio 2% + vendedor 4%)
         if resultado == LeadStatus.GANHO:
             entrega = Entrega(
                 id=uuid4(),
@@ -223,23 +223,30 @@ class LeadService:
             )
             self.session.add(entrega)
 
+            rep_repo = RepresentanteRepository(self.session)
+
             if lead.representante_id:
-                rep_repo = RepresentanteRepository(self.session)
                 rep = await rep_repo.get_by_id(lead.representante_id)
                 if rep is not None:
-                    pct = Decimal(rep.comissao_pct)
-                    valor_com = (Decimal(lead.valor) * pct / Decimal(100)).quantize(Decimal("0.01"))
-                    comissao = Comissao(
-                        id=uuid4(),
-                        tenant_id=tenant_id,
-                        representante_id=rep.id,
-                        lead_id=lead.id,
-                        valor_base=lead.valor,
-                        percentual=pct,
-                        valor_comissao=valor_com,
-                        status="pendente",
-                    )
-                    self.session.add(comissao)
+                    # Comissão do vendedor/rep: sempre 4% sobre o valor
+                    valor_com_vend = (Decimal(lead.valor) * Decimal("4") / Decimal("100")).quantize(Decimal("0.01"))
+                    self.session.add(Comissao(
+                        id=uuid4(), tenant_id=tenant_id,
+                        representante_id=rep.id, lead_id=lead.id,
+                        valor_base=lead.valor, percentual=Decimal("4"),
+                        valor_comissao=valor_com_vend, status="pendente",
+                    ))
+
+            # Comissão fixa do Caio: sempre 2% sobre TODAS as vendas
+            caio = await rep_repo.get_by_nome_parcial("Caio Victor", tenant_id)
+            if caio and caio.id != lead.representante_id:
+                valor_com_caio = (Decimal(lead.valor) * Decimal("2") / Decimal("100")).quantize(Decimal("0.01"))
+                self.session.add(Comissao(
+                    id=uuid4(), tenant_id=tenant_id,
+                    representante_id=caio.id, lead_id=lead.id,
+                    valor_base=lead.valor, percentual=Decimal("2"),
+                    valor_comissao=valor_com_caio, status="pendente",
+                ))
 
         await self.session.flush()
 

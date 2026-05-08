@@ -1,6 +1,6 @@
 """Schemas Pydantic para Leads."""
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -31,6 +31,17 @@ class LeadOut(BaseModel):
     metadados: dict[str, object]
     ganho_em: datetime | None = None
     perdido_em: datetime | None = None
+    # campos comerciais detalhados
+    data_ultimo_contato: datetime | None = None
+    tipo_ultimo_contato: str | None = None
+    projeto_2d_enviado: bool = False
+    projeto_2d_data: date | None = None
+    projeto_3d_enviado: bool = False
+    projeto_3d_data: date | None = None
+    probabilidade_override: Decimal | None = None
+    valor_entrada: Decimal | None = None
+    percentual_entrada: Decimal | None = None
+    forma_pagamento: str | None = None
     criado_em: datetime
     atualizado_em: datetime
 
@@ -44,6 +55,9 @@ class LeadCreate(BaseModel):
     prioridade: LeadPrioridade = LeadPrioridade.MEDIA
     tags: list[str] = Field(default_factory=list)
     sla_deadline: datetime | None = None
+    forma_pagamento: str | None = Field(default=None, max_length=80)
+    valor_entrada: Decimal | None = Field(default=None, ge=0)
+    percentual_entrada: Decimal | None = Field(default=None, ge=0, le=100)
 
 
 class LeadUpdate(BaseModel):
@@ -54,6 +68,16 @@ class LeadUpdate(BaseModel):
     prioridade: LeadPrioridade | None = None
     tags: list[str] | None = None
     sla_deadline: datetime | None = None
+    data_ultimo_contato: datetime | None = None
+    tipo_ultimo_contato: str | None = Field(default=None, max_length=30)
+    projeto_2d_enviado: bool | None = None
+    projeto_2d_data: date | None = None
+    projeto_3d_enviado: bool | None = None
+    projeto_3d_data: date | None = None
+    probabilidade_override: Decimal | None = Field(default=None, ge=0, le=100)
+    valor_entrada: Decimal | None = Field(default=None, ge=0)
+    percentual_entrada: Decimal | None = Field(default=None, ge=0, le=100)
+    forma_pagamento: str | None = Field(default=None, max_length=80)
 
 
 class LeadMoveStage(BaseModel):

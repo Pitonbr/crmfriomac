@@ -4,7 +4,7 @@ from datetime import date
 from enum import StrEnum
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, Index, String, Text
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TenantMixin, TimestampMixin, UUIDPrimaryKeyMixin
@@ -30,3 +30,6 @@ class Entrega(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
         String(20), nullable=False, default=EntregaStatus.PLANEJADA
     )
     observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    retrabalho: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    retrabalho_desc: Mapped[str | None] = mapped_column(Text, nullable=True)
+    satisfacao: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 1-5 estrelas

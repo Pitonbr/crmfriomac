@@ -17,6 +17,9 @@ class EntregaOut(BaseModel):
     prazo_real: date | None = None
     status: EntregaStatus
     observacoes: str | None = None
+    retrabalho: bool = False
+    retrabalho_desc: str | None = None
+    satisfacao: int | None = None
     criado_em: datetime
     atualizado_em: datetime
 
@@ -26,3 +29,6 @@ class EntregaUpdate(BaseModel):
     prazo_real: date | None = None
     status: EntregaStatus | None = None
     observacoes: str | None = None
+    retrabalho: bool | None = None
+    retrabalho_desc: str | None = None
+    satisfacao: int | None = None

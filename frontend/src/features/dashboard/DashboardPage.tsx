@@ -142,26 +142,30 @@ export function DashboardPage() {
 
       {/* Top representantes */}
       <section className="chart-card">
-        <h3>Top 10 Representantes (por valor de pipeline)</h3>
+        <h3>Ranking de Representantes</h3>
         <table className="kpi-table">
           <thead>
             <tr>
+              <th style={{ width: 36 }}>#</th>
               <th>Representante</th>
               <th style={{ textAlign: 'right' }}>Leads</th>
               <th style={{ textAlign: 'right' }}>Valor Total</th>
             </tr>
           </thead>
           <tbody>
-            {data.top_reps.map((r) => (
+            {data.top_reps.map((r, idx) => (
               <tr key={r.representante_id}>
-                <td>{r.nome}</td>
+                <td style={{ fontSize: '1.05rem', textAlign: 'center' }}>
+                  {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}º`}
+                </td>
+                <td style={{ fontWeight: idx < 3 ? 700 : 400 }}>{r.nome}</td>
                 <td style={{ textAlign: 'right' }}>{r.qtd_leads}</td>
                 <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatBRL(r.valor_total)}</td>
               </tr>
             ))}
             {data.top_reps.length === 0 && (
               <tr>
-                <td colSpan={3} style={{ color: 'var(--text-3)', textAlign: 'center', padding: 20 }}>
+                <td colSpan={4} style={{ color: 'var(--text-3)', textAlign: 'center', padding: 20 }}>
                   Nenhum representante com leads
                 </td>
               </tr>

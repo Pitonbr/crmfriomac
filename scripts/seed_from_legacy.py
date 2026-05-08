@@ -39,14 +39,16 @@ from scripts.legacy_parser import load_legacy_data
 
 # ── stages padrão (do design original) ─────────────────────────────
 STAGES_SEED: tuple[dict[str, Any], ...] = (
-    {"slug": "novo_lead", "label": "Novo Lead", "icone": "📥", "sla_horas": 2, "cor": "#0EA5E9", "prob_pct": 10, "ordem": 1},
-    {"slug": "visita_loco", "label": "Visita In Loco", "icone": "🏢", "sla_horas": 72, "cor": "#7C3AED", "prob_pct": 25, "ordem": 2},
-    {"slug": "orcamento_env", "label": "Orçamento Enviado", "icone": "📄", "sla_horas": 24, "cor": "#0D9488", "prob_pct": 40, "ordem": 3},
-    {"slug": "follow_up", "label": "Follow Up", "icone": "📞", "sla_horas": 48, "cor": "#D97706", "prob_pct": 55, "ordem": 4},
-    {"slug": "pre_projeto", "label": "Pré-Projeto 2D/3D", "icone": "📐", "sla_horas": 72, "cor": "#E8500A", "prob_pct": 70, "ordem": 5},
-    {"slug": "visita_fech", "label": "Visita Fechamento", "icone": "🤝", "sla_horas": 48, "cor": "#DC2626", "prob_pct": 80, "ordem": 6},
-    {"slug": "contrato_env", "label": "Contrato Enviado", "icone": "📋", "sla_horas": 24, "cor": "#16A34A", "prob_pct": 90, "ordem": 7},
-    {"slug": "decisao_final", "label": "Decisão Final", "icone": "✅", "sla_horas": 0, "cor": "#15803D", "prob_pct": 100, "ordem": 8},
+    {"slug": "novo_lead",     "label": "Novo Lead",          "icone": "📥", "sla_horas": 2,  "cor": "#0EA5E9", "prob_pct": 10,  "ordem": 1},
+    {"slug": "visita_loco",   "label": "Visita In Loco",      "icone": "🏢", "sla_horas": 72, "cor": "#7C3AED", "prob_pct": 25,  "ordem": 2},
+    {"slug": "orcamento_env", "label": "Orçamento Enviado",   "icone": "📄", "sla_horas": 24, "cor": "#0D9488", "prob_pct": 40,  "ordem": 3},
+    {"slug": "negociacao",    "label": "Negociação",          "icone": "🤝", "sla_horas": 48, "cor": "#7C3AED", "prob_pct": 60,  "ordem": 4},
+    {"slug": "follow_up",     "label": "Follow Up",           "icone": "📞", "sla_horas": 48, "cor": "#D97706", "prob_pct": 55,  "ordem": 5},
+    {"slug": "pre_projeto",   "label": "Pré-Projeto 2D/3D",   "icone": "📐", "sla_horas": 72, "cor": "#E8500A", "prob_pct": 70,  "ordem": 6},
+    {"slug": "visita_fech",   "label": "Visita Fechamento",   "icone": "🏆", "sla_horas": 48, "cor": "#DC2626", "prob_pct": 80,  "ordem": 7},
+    {"slug": "contrato_env",  "label": "Contrato Enviado",    "icone": "📋", "sla_horas": 24, "cor": "#16A34A", "prob_pct": 90,  "ordem": 8},
+    {"slug": "decisao_final", "label": "Decisão Final",       "icone": "✅", "sla_horas": 0,  "cor": "#15803D", "prob_pct": 100, "ordem": 9},
+    {"slug": "reativacao",    "label": "Reativação",          "icone": "🔄", "sla_horas": 72, "cor": "#94A3B8", "prob_pct": 20,  "ordem": 10},
 )
 
 

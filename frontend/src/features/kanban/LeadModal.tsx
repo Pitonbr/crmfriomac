@@ -12,6 +12,21 @@ import {
   useObservacoes,
 } from '@/hooks/queries/useLeads';
 import { formatBRL, formatDateTime, formatRelative } from '@/lib/formatters';
+import type { Lead } from '@/api/schemas';
+
+// Campos comerciais extras (backend migration 0007)
+interface LeadFull extends Lead {
+  data_ultimo_contato?: string | null;
+  tipo_ultimo_contato?: string | null;
+  projeto_2d_enviado?: boolean;
+  projeto_2d_data?: string | null;
+  projeto_3d_enviado?: boolean;
+  projeto_3d_data?: string | null;
+  probabilidade_override?: number | null;
+  valor_entrada?: number | null;
+  percentual_entrada?: number | null;
+  forma_pagamento?: string | null;
+}
 
 export function LeadModal() {
   const { leadId } = useParams<{ leadId: string }>();
@@ -105,6 +120,55 @@ export function LeadModal() {
             <Field label="Status" value={statusLabel(lead.status)} />
             <Field label="Aberto" value={formatRelative(lead.data_abertura)} />
             <Field label="Última movimentação" value={formatRelative(lead.data_ultima_movimentacao)} />
+          </section>
+
+          {/* Detalhes comerciais */}
+          <section
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+              gap: 12,
+              padding: 16,
+              background: 'var(--surface-2)',
+              borderRadius: 'var(--radius)',
+            }}
+          >
+            <Field
+              label="Último Contato"
+              value={
+                (lead as LeadFull).data_ultimo_contato
+                  ? `${formatDateTime((lead as LeadFull).data_ultimo_contato!)} · ${(lead as LeadFull).tipo_ultimo_contato ?? ''}`
+                  : '—'
+              }
+            />
+            <Field
+              label="Forma de Pagamento"
+              value={(lead as LeadFull).forma_pagamento ?? '—'}
+            />
+            <Field
+              label="Valor de Entrada"
+              value={
+                (lead as LeadFull).valor_entrada != null
+                  ? `${formatBRL((lead as LeadFull).valor_entrada!)} (${(lead as LeadFull).percentual_entrada ?? 0}%)`
+                  : '—'
+              }
+            />
+            <Field
+              label="Projeto 2D"
+              value={(lead as LeadFull).projeto_2d_enviado ? `Enviado${(lead as LeadFull).projeto_2d_data ? ` em ${formatDateTime((lead as LeadFull).projeto_2d_data!)}` : ''}` : 'Não enviado'}
+            />
+            <Field
+              label="Projeto 3D"
+              value={(lead as LeadFull).projeto_3d_enviado ? `Enviado${(lead as LeadFull).projeto_3d_data ? ` em ${formatDateTime((lead as LeadFull).projeto_3d_data!)}` : ''}` : 'Não enviado'}
+            />
+            <Field
+              label="Probabilidade"
+              value={
+                (lead as LeadFull).probabilidade_override != null
+                  ? `${(lead as LeadFull).probabilidade_override}% (manual)`
+                  : 'Automática (stage)'
+              }
+            />
           </section>
 
           {/* Tags */}
