@@ -1,6 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { listComissoes, listEntregas, listOrcamentos } from '@/api/orcamentos';
+import {
+  createEntrega,
+  type EntregaCreatePayload,
+  type EntregaUpdatePayload,
+  listComissoes,
+  listEntregas,
+  listOrcamentos,
+  updateEntrega,
+} from '@/api/orcamentos';
 
 export function useOrcamentos() {
   return useQuery({
@@ -18,10 +26,29 @@ export function useComissoes() {
   });
 }
 
+export const ENTREGAS_KEY = ['entregas'] as const;
+
 export function useEntregas() {
   return useQuery({
-    queryKey: ['entregas'],
+    queryKey: ENTREGAS_KEY,
     queryFn: listEntregas,
     staleTime: 60_000,
+  });
+}
+
+export function useCreateEntrega() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: EntregaCreatePayload) => createEntrega(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ENTREGAS_KEY }),
+  });
+}
+
+export function useUpdateEntrega() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: EntregaUpdatePayload }) =>
+      updateEntrega(id, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ENTREGAS_KEY }),
   });
 }

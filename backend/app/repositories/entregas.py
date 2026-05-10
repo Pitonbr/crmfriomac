@@ -21,6 +21,11 @@ class EntregaRepository:
     async def get_by_id(self, eid: UUID) -> Entrega | None:
         return await self.session.get(Entrega, eid)
 
+    # alias to match API naming convention
+    async def get_by_lead_id(self, lead_id: UUID) -> Entrega | None:
+        stmt = select(Entrega).where(Entrega.lead_id == lead_id)
+        return (await self.session.execute(stmt)).scalar_one_or_none()
+
     async def get_by_lead(self, lead_id: UUID) -> Entrega | None:
         stmt = select(Entrega).where(Entrega.lead_id == lead_id)
         return (await self.session.execute(stmt)).scalar_one_or_none()

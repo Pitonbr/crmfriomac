@@ -232,6 +232,9 @@ export const EntregaSchema = z.object({
   prazo_real: z.string().nullable().optional(),
   status: EntregaStatusSchema,
   observacoes: z.string().nullable().optional(),
+  retrabalho: z.boolean().default(false),
+  retrabalho_desc: z.string().nullable().optional(),
+  satisfacao: z.number().int().nullable().optional(),
   criado_em: z.string(),
   atualizado_em: z.string(),
 });

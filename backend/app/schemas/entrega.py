@@ -24,6 +24,17 @@ class EntregaOut(BaseModel):
     atualizado_em: datetime
 
 
+class EntregaCreate(BaseModel):
+    lead_id: UUID
+    prazo_estimado: date | None = None
+    prazo_real: date | None = None
+    status: EntregaStatus = EntregaStatus.PLANEJADA
+    observacoes: str | None = None
+    retrabalho: bool = False
+    retrabalho_desc: str | None = None
+    satisfacao: int | None = None
+
+
 class EntregaUpdate(BaseModel):
     prazo_estimado: date | None = None
     prazo_real: date | None = None

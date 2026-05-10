@@ -1,0 +1,299 @@
+/* ── Prazos de Entrega Page ───────────────────────────────────────── */
+
+/* Alert banner */
+.pz-alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  background: var(--warning-bg, #fef3c7);
+  border: 1px solid #fcd34d;
+  border-radius: var(--radius-lg);
+  font-size: .875rem;
+  color: #92400e;
+  margin-bottom: 4px;
+}
+
+/* Stats row — clickable cards (act as filters) */
+.pz-stats-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+.pz-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 12px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.pz-stat-card:hover {
+  border-color: var(--pz-stat-color, var(--primary));
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.pz-stat-card.active {
+  border-color: var(--pz-stat-color, var(--primary));
+  background: var(--surface-2);
+}
+
+.pz-stat-icon { font-size: 1.4rem; }
+
+.pz-stat-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--pz-stat-color, var(--primary));
+  line-height: 1;
+}
+
+.pz-stat-label {
+  font-size: 0.7rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+/* Novo Entrega button */
+.pz-novo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 18px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light, #3b82f6));
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(30 90 200 / 0.3);
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.pz-novo-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.07);
+  box-shadow: 0 4px 12px rgba(30 90 200 / 0.4);
+}
+
+/* Policy banner */
+.pz-policy-banner {
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: .78rem;
+  color: var(--text-2);
+}
+
+/* Table enhancements */
+.pz-table .pz-date-danger { color: var(--danger); font-weight: 700; }
+.pz-table .pz-date-ok { color: var(--success); font-weight: 600; }
+.pz-table .pz-row-atrasada td:first-child { border-left: 3px solid var(--danger); }
+
+.pz-badge-retrabalho {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--warning-bg, #fef3c7);
+  color: var(--warning, #f59e0b);
+  border: 1px solid var(--warning, #f59e0b);
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.pz-stars-display {
+  font-size: 1rem;
+  color: #f59e0b;
+  letter-spacing: 1px;
+}
+
+.pz-edit-btn {
+  padding: 4px 12px;
+  background: var(--surface-2);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition);
+}
+
+.pz-edit-btn:hover {
+  border-color: var(--primary-light);
+  color: var(--primary);
+}
+
+/* ── Edit Modal Form ──────────────────────────────────────────────── */
+.pz-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pz-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  font-size: .82rem;
+}
+
+.pz-field { display: flex; flex-direction: column; gap: 5px; }
+
+.pz-label {
+  display: block;
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.pz-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font-size: .875rem;
+  font-family: inherit;
+}
+
+.pz-input:focus {
+  outline: none;
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 2px var(--primary-bg);
+}
+
+.pz-input-danger {
+  border-color: var(--danger) !important;
+  background: var(--danger-bg) !important;
+  color: var(--danger) !important;
+}
+
+.pz-hint-danger {
+  font-size: .72rem;
+  color: var(--danger);
+  margin-top: 2px;
+}
+
+.pz-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font-size: .875rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 72px;
+}
+
+.pz-textarea:focus {
+  outline: none;
+  border-color: var(--primary-light);
+}
+
+.pz-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Star rating */
+.pz-stars {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pz-star {
+  font-size: 1.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--border-2);
+  transition: color 0.1s;
+  padding: 0;
+  line-height: 1;
+}
+
+.pz-star.active { color: #f59e0b; }
+.pz-star:hover { color: #f59e0b; }
+
+.pz-star-label {
+  font-size: .8rem;
+  font-weight: 700;
+  color: #f59e0b;
+  margin-left: 4px;
+}
+
+.pz-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--text-1);
+  cursor: pointer;
+}
+
+.pz-checkbox-label input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--danger);
+}
+
+/* Footer buttons */
+.pz-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.pz-btn-cancel {
+  padding: 8px 18px;
+  background: var(--surface-2);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.pz-btn-save {
+  padding: 8px 22px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light, #3b82f6));
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-size: .875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter .18s;
+}
+
+.pz-btn-save:hover { filter: brightness(1.07); }
+.pz-btn-save:disabled { opacity: 0.6; cursor: not-allowed; }

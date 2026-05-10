@@ -27,3 +27,30 @@ export async function listEntregas(): Promise<Entrega[]> {
   const data = await http<unknown>('/api/v1/entregas');
   return z.array(EntregaSchema).parse(data);
 }
+
+export interface EntregaCreatePayload {
+  lead_id: string;
+  prazo_estimado?: string | null;
+  status?: 'planejada' | 'em_producao' | 'entregue' | 'atrasada';
+  observacoes?: string | null;
+}
+
+export interface EntregaUpdatePayload {
+  status?: 'planejada' | 'em_producao' | 'entregue' | 'atrasada';
+  prazo_estimado?: string | null;
+  prazo_real?: string | null;
+  satisfacao?: number | null;
+  retrabalho?: boolean;
+  retrabalho_desc?: string | null;
+  observacoes?: string | null;
+}
+
+export async function createEntrega(payload: EntregaCreatePayload): Promise<Entrega> {
+  const data = await http<unknown>('/api/v1/entregas', { method: 'POST', body: payload });
+  return EntregaSchema.parse(data);
+}
+
+export async function updateEntrega(id: string, payload: EntregaUpdatePayload): Promise<Entrega> {
+  const data = await http<unknown>(`/api/v1/entregas/${id}`, { method: 'PATCH', body: payload });
+  return EntregaSchema.parse(data);
+}
