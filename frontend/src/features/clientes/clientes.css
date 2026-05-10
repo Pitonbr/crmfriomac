@@ -823,3 +823,39 @@
   letter-spacing: 0.05em;
   margin-bottom: 8px;
 }
+
+/* ── VendedoresPage modals ──── */
+.rep-form { display: flex; flex-direction: column; gap: 14px; }
+.rep-field { display: flex; flex-direction: column; gap: 4px; }
+.rep-field label { font-size: .75rem; font-weight: 700; color: var(--text-2); text-transform: uppercase; }
+.rep-field input, .rep-field select {
+  padding: 8px 10px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font-size: .875rem;
+  font-family: inherit;
+}
+.rep-field input:focus, .rep-field select:focus { outline: none; border-color: var(--primary-light); }
+.rep-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.rep-submit-row { display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px; }
+.rep-leads-list { display: flex; flex-direction: column; gap: 6px; }
+.rep-lead-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer; text-align: left; width: 100%;
+  transition: var(--transition);
+}
+.rep-lead-row:hover { border-color: var(--primary-light); background: var(--primary-bg); }
+.rep-leads-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.rep-leads-count { font-size: .82rem; color: var(--text-2); flex: 1; }
+.rep-export-btn {
+  padding: 5px 12px; background: var(--surface); border: var(--border-w) solid var(--border);
+  border-radius: var(--radius); font-size: .78rem; font-weight: 700; color: var(--text-2);
+  cursor: pointer; transition: var(--transition);
+}
+.rep-export-btn:hover { border-color: var(--primary-light); color: var(--primary); }

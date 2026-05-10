@@ -3,7 +3,7 @@
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps.auth import CurrentUserDep, get_current_user, require_role
@@ -28,9 +28,11 @@ router = APIRouter(
 async def list_reps(
     _user: CurrentUserDep,
     session: Annotated[AsyncSession, Depends(get_session)],
+    incluir_inativos: bool = Query(default=False),
 ) -> list[RepresentanteOut]:
     repo = RepresentanteRepository(session)
-    return [RepresentanteOut.model_validate(r) for r in await repo.list_all()]
+    items = await repo.list_all(ativos=not incluir_inativos)
+    return [RepresentanteOut.model_validate(r) for r in items]
 
 
 @router.get("/{rep_id}", response_model=RepresentanteOut)
