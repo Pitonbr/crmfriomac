@@ -96,10 +96,35 @@ export const LeadSchema = z.object({
   metadados: z.record(z.string(), z.unknown()),
   ganho_em: z.string().nullable().optional(),
   perdido_em: z.string().nullable().optional(),
+  // campos comerciais (migration 0007)
+  data_ultimo_contato: z.string().nullable().optional(),
+  tipo_ultimo_contato: z.string().nullable().optional(),
+  projeto_2d_enviado: z.boolean().default(false),
+  projeto_2d_data: z.string().nullable().optional(),
+  projeto_3d_enviado: z.boolean().default(false),
+  projeto_3d_data: z.string().nullable().optional(),
+  probabilidade_override: z.coerce.number().nullable().optional(),
+  valor_entrada: z.coerce.number().nullable().optional(),
+  percentual_entrada: z.coerce.number().nullable().optional(),
+  forma_pagamento: z.string().nullable().optional(),
   criado_em: z.string(),
   atualizado_em: z.string(),
 });
 export type Lead = z.infer<typeof LeadSchema>;
+
+// ── Anexo ───────────────────────────────────────────────────────────
+export const AnexoSchema = z.object({
+  id: z.string().uuid(),
+  lead_id: z.string().uuid().nullable().optional(),
+  representante_id: z.string().uuid().nullable().optional(),
+  nome_arquivo: z.string(),
+  content_type: z.string(),
+  tamanho_bytes: z.number().int(),
+  autor_id: z.string().uuid().nullable().optional(),
+  autor_nome: z.string(),
+  criado_em: z.string(),
+});
+export type Anexo = z.infer<typeof AnexoSchema>;
 
 // ── Observacao ──────────────────────────────────────────────────────
 export const ObservacaoTipoSchema = z.enum([

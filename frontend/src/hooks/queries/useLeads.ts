@@ -4,13 +4,18 @@ import {
   addObservacao,
   concluirLead,
   createLead,
+  deleteAnexo,
   type LeadCreatePayload,
   type LeadFilters,
+  type LeadUpdatePayload,
   deleteLead,
   getLead,
+  listAnexos,
   listLeads,
   listObservacoes,
   moveLeadStage,
+  updateLead,
+  uploadAnexo,
 } from '@/api/leads';
 import type { Lead } from '@/api/schemas';
 
@@ -113,5 +118,42 @@ export function useAddObservacao() {
       addObservacao(leadId, texto),
     onSuccess: (_data, vars) =>
       qc.invalidateQueries({ queryKey: [...LEADS_KEY, vars.leadId, 'observacoes'] }),
+  });
+}
+
+export function useUpdateLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ leadId, payload }: { leadId: string; payload: LeadUpdatePayload }) =>
+      updateLead(leadId, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: LEADS_KEY }),
+  });
+}
+
+export function useAnexos(leadId: string | undefined) {
+  return useQuery({
+    queryKey: [...LEADS_KEY, leadId, 'anexos'],
+    queryFn: () => listAnexos(leadId!),
+    enabled: !!leadId,
+    staleTime: 30_000,
+  });
+}
+
+export function useUploadAnexo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ leadId, file }: { leadId: string; file: File }) =>
+      uploadAnexo(leadId, file),
+    onSuccess: (_data, vars) =>
+      qc.invalidateQueries({ queryKey: [...LEADS_KEY, vars.leadId, 'anexos'] }),
+  });
+}
+
+export function useDeleteAnexo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { leadId: string; anexoId: string }) => deleteAnexo(vars.anexoId),
+    onSuccess: (_data, vars) =>
+      qc.invalidateQueries({ queryKey: [...LEADS_KEY, vars.leadId, 'anexos'] }),
   });
 }

@@ -9,7 +9,7 @@ import {
 import { useMemo } from 'react';
 import { toast } from 'sonner';
 
-import type { Cliente, Lead, Stage } from '@/api/schemas';
+import type { Cliente, Lead, Representante, Stage } from '@/api/schemas';
 import { useMoveLeadStage } from '@/hooks/queries/useLeads';
 
 import { KanbanCard } from './KanbanCard';
@@ -19,26 +19,34 @@ interface Props {
   stages: Stage[];
   leads: Lead[];
   clientes: Map<string, Cliente>;
+  reps: Map<string, Representante>;
 }
 
-export function KanbanBoard({ stages, leads, clientes }: Props) {
+export function KanbanBoard({ stages, leads, clientes, reps }: Props) {
   const moveStage = useMoveLeadStage();
 
-  // Sensors com activation distance (evita drag em clique simples)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor),
   );
 
-  // Agrupa leads por stage_id
-  const byStage = useMemo(() => {
-    const m = new Map<string, Lead[]>();
-    for (const stage of stages) m.set(stage.id, []);
+  const { byStage, ganhoLeads, perdidoLeads } = useMemo(() => {
+    const byStage = new Map<string, Lead[]>();
+    for (const stage of stages) byStage.set(stage.id, []);
+    const ganhoLeads: Lead[] = [];
+    const perdidoLeads: Lead[] = [];
+
     for (const lead of leads) {
-      const arr = m.get(lead.stage_id);
-      if (arr) arr.push(lead);
+      if (lead.status === 'ganho') {
+        ganhoLeads.push(lead);
+      } else if (lead.status === 'perdido') {
+        perdidoLeads.push(lead);
+      } else {
+        const arr = byStage.get(lead.stage_id);
+        if (arr) arr.push(lead);
+      }
     }
-    return m;
+    return { byStage, ganhoLeads, perdidoLeads };
   }, [stages, leads]);
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -65,18 +73,71 @@ export function KanbanBoard({ stages, leads, clientes }: Props) {
       <div className="kb-board" role="list" aria-label="Funil de vendas">
         {stages.map((stage) => {
           const list = byStage.get(stage.id) ?? [];
+          const total = list.reduce((s, l) => s + l.valor, 0);
           return (
-            <KanbanColumn key={stage.id} stage={stage} count={list.length}>
+            <KanbanColumn
+              key={stage.id}
+              stage={stage}
+              count={list.length}
+              totalValor={total}
+            >
               {list.map((lead) => (
                 <KanbanCard
                   key={lead.id}
                   lead={lead}
                   cliente={clientes.get(lead.cliente_id)}
+                  rep={lead.representante_id ? reps.get(lead.representante_id) : undefined}
                 />
               ))}
             </KanbanColumn>
           );
         })}
+
+        {/* Ganhos column */}
+        {ganhoLeads.length > 0 && (
+          <KanbanColumn
+            customId="__ganho__"
+            customLabel="Concretizados"
+            customIcon="🏆"
+            customCor="var(--success)"
+            customClass="ganho"
+            count={ganhoLeads.length}
+            totalValor={ganhoLeads.reduce((s, l) => s + l.valor, 0)}
+            droppable={false}
+          >
+            {ganhoLeads.map((lead) => (
+              <KanbanCard
+                key={lead.id}
+                lead={lead}
+                cliente={clientes.get(lead.cliente_id)}
+                rep={lead.representante_id ? reps.get(lead.representante_id) : undefined}
+              />
+            ))}
+          </KanbanColumn>
+        )}
+
+        {/* Perdidos column */}
+        {perdidoLeads.length > 0 && (
+          <KanbanColumn
+            customId="__perdido__"
+            customLabel="Perdidos"
+            customIcon="❌"
+            customCor="var(--danger)"
+            customClass="perdido"
+            count={perdidoLeads.length}
+            totalValor={perdidoLeads.reduce((s, l) => s + l.valor, 0)}
+            droppable={false}
+          >
+            {perdidoLeads.map((lead) => (
+              <KanbanCard
+                key={lead.id}
+                lead={lead}
+                cliente={clientes.get(lead.cliente_id)}
+                rep={lead.representante_id ? reps.get(lead.representante_id) : undefined}
+              />
+            ))}
+          </KanbanColumn>
+        )}
       </div>
     </DndContext>
   );

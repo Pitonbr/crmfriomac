@@ -13,3 +13,18 @@ export async function getCliente(id: string): Promise<Cliente> {
   const data = await http<unknown>(`/api/v1/clientes/${id}`);
   return ClienteSchema.parse(data);
 }
+
+export interface ClienteCreatePayload {
+  nome_fantasia: string;
+  nome_contato?: string;
+  telefone?: string;
+  email?: string;
+  cidade?: string;
+  estado?: string;
+  canal?: string;
+}
+
+export async function createCliente(payload: ClienteCreatePayload): Promise<Cliente> {
+  const data = await http<unknown>('/api/v1/clientes', { method: 'POST', body: payload });
+  return ClienteSchema.parse(data);
+}

@@ -1,6 +1,8 @@
 import { http } from '@/lib/http';
 
 import {
+  type Anexo,
+  AnexoSchema,
   type Lead,
   LeadSchema,
   type LeadPrioridade,
@@ -47,10 +49,35 @@ export interface LeadCreatePayload {
   valor?: number;
   prioridade?: LeadPrioridade;
   tags?: string[];
+  forma_pagamento?: string;
+  valor_entrada?: number;
+  percentual_entrada?: number;
 }
 
 export async function createLead(payload: LeadCreatePayload): Promise<Lead> {
   const data = await http<unknown>('/api/v1/leads', { method: 'POST', body: payload });
+  return LeadSchema.parse(data);
+}
+
+export interface LeadUpdatePayload {
+  projeto?: string | null;
+  valor?: number;
+  prioridade?: LeadPrioridade;
+  tags?: string[];
+  data_ultimo_contato?: string | null;
+  tipo_ultimo_contato?: string | null;
+  projeto_2d_enviado?: boolean;
+  projeto_2d_data?: string | null;
+  projeto_3d_enviado?: boolean;
+  projeto_3d_data?: string | null;
+  probabilidade_override?: number | null;
+  valor_entrada?: number | null;
+  percentual_entrada?: number | null;
+  forma_pagamento?: string | null;
+}
+
+export async function updateLead(leadId: string, payload: LeadUpdatePayload): Promise<Lead> {
+  const data = await http<unknown>(`/api/v1/leads/${leadId}`, { method: 'PATCH', body: payload });
   return LeadSchema.parse(data);
 }
 
@@ -90,4 +117,28 @@ export async function addObservacao(leadId: string, texto: string): Promise<Obse
     body: { texto, tipo: 'manual' },
   });
   return ObservacaoSchema.parse(data);
+}
+
+// ── Anexos ─────────────────────────────────────────────────────────
+export async function listAnexos(leadId: string): Promise<Anexo[]> {
+  const data = await http<unknown>(`/api/v1/anexos/lead/${leadId}`);
+  return z.array(AnexoSchema).parse(data);
+}
+
+export async function uploadAnexo(leadId: string, file: File): Promise<Anexo> {
+  const form = new FormData();
+  form.append('file', file);
+  const data = await http<unknown>(`/api/v1/anexos/lead/${leadId}`, {
+    method: 'POST',
+    body: form,
+  });
+  return AnexoSchema.parse(data);
+}
+
+export async function deleteAnexo(anexoId: string): Promise<void> {
+  await http<void>(`/api/v1/anexos/${anexoId}`, { method: 'DELETE' });
+}
+
+export function getAnexoDownloadUrl(anexoId: string): string {
+  return `/api/v1/anexos/${anexoId}/download`;
 }
