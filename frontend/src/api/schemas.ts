@@ -48,6 +48,7 @@ export const ClienteSchema = z.object({
   canal: z.string().nullable().optional(),
   observacoes: z.string().nullable().optional(),
   ativo: z.boolean(),
+  criado_em: z.string().nullable().optional(),
 });
 export type Cliente = z.infer<typeof ClienteSchema>;
 

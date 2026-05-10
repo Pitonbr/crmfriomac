@@ -1,5 +1,6 @@
 """Schemas Pydantic para Clientes."""
 
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -21,6 +22,7 @@ class ClienteOut(BaseModel):
     canal: str | None = None
     observacoes: str | None = None
     ativo: bool
+    criado_em: datetime | None = None
 
 
 class ClienteCreate(BaseModel):

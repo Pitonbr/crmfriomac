@@ -5,6 +5,7 @@ import { ChangePasswordPage } from '@/features/auth/ChangePasswordPage';
 import { LoginScreen } from '@/features/auth/LoginScreen';
 import { CampanhasPage } from '@/features/campanhas/CampanhasPage';
 import { ClientesPage } from '@/features/clientes/ClientesPage';
+import { ClientModal } from '@/features/clientes/ClientModal';
 import { ComissoesPage } from '@/features/comissoes/ComissoesPage';
 import { ConfigPage } from '@/features/config/ConfigPage';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
@@ -38,7 +39,11 @@ export const router = createBrowserRouter([
             children: [{ path: 'leads/:leadId', element: <LeadModal /> }],
           },
           { path: 'orcamentos', element: <OrcamentosPage /> },
-          { path: 'clientes', element: <ClientesPage /> },
+          {
+            path: 'clientes',
+            element: <ClientesPage />,
+            children: [{ path: ':clienteId', element: <ClientModal /> }],
+          },
           { path: 'campanhas', element: <CampanhasPage /> },
           { path: 'relatorio-vendas', element: <RelatorioVendasPage /> },
           { path: 'comissoes', element: <ComissoesPage /> },

@@ -558,3 +558,268 @@
 }
 
 .form-control:focus { border-color: var(--primary-light, #1A4A82); }
+
+/* ── Clientes Page — estilos novos ───────────────────────────────────── */
+
+/* Filtro chips */
+.cli-filter-group {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.cli-filter-btn {
+  padding: 5px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.cli-filter-btn:hover {
+  border-color: var(--border-2);
+  color: var(--text-1);
+}
+
+.cli-filter-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+/* Contador + export */
+.cli-count-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.cli-count {
+  font-size: 0.82rem;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+/* Export button */
+.cli-export-wrap {
+  position: relative;
+}
+
+.cli-export-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--surface);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.cli-export-btn:hover {
+  background: var(--primary-bg);
+  border-color: var(--primary-light);
+  color: var(--primary);
+}
+
+.cli-export-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--surface);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: 100;
+  min-width: 220px;
+  overflow: hidden;
+}
+
+.cli-export-option {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  text-align: left;
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  color: var(--text-1);
+  cursor: pointer;
+  transition: var(--transition);
+  border-bottom: 1px solid var(--border);
+}
+
+.cli-export-option:last-child {
+  border-bottom: none;
+}
+
+.cli-export-option:hover {
+  background: var(--surface-2);
+  color: var(--primary);
+}
+
+/* Tabela de clientes */
+.cli-table th {
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+}
+
+.cli-row {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.cli-row:hover td {
+  background: var(--surface-2);
+}
+
+.cli-row:hover td:first-child {
+  color: var(--primary);
+}
+
+.cli-email-link {
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.cli-email-link:hover {
+  text-decoration: underline;
+}
+
+.cli-stage-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cli-ver-btn {
+  padding: 4px 12px;
+  background: var(--surface-2);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition);
+}
+
+.cli-ver-btn:hover {
+  border-color: var(--primary-light);
+  color: var(--primary);
+}
+
+/* Client Modal — leads list */
+.cli-leads-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cli-lead-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: var(--transition);
+}
+
+.cli-lead-row:hover {
+  border-color: var(--primary-light);
+  background: var(--primary-bg);
+}
+
+.cli-lead-codigo {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-3);
+  min-width: 50px;
+  letter-spacing: 0.03em;
+}
+
+.cli-lead-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cli-lead-projeto {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cli-lead-date {
+  font-size: 0.7rem;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+.cli-lead-stage {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cli-lead-valor {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--success);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cli-lead-status {
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cli-lead-arrow {
+  color: var(--text-3);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+/* Compatibilidade com lm-field inside ClientModal */
+.cli-leads-list .lm-section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
