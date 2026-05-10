@@ -55,6 +55,23 @@ class LeadRecente(BaseModel):
     data_abertura: datetime
 
 
+class LeadProbabilidade(BaseModel):
+    """Lead com probabilidade de fechamento calculada pelo algoritmo."""
+    id: str
+    codigo: str
+    nome_fantasia: str
+    valor: Decimal
+    stage_label: str
+    stage_cor: str
+    probabilidade_calculada: float
+    probabilidade_base: float
+    boost_keywords: float
+    boost_projeto: float
+    penalidade_tempo: float
+    ajuste_manual: float
+    keywords_encontradas: list[str]
+
+
 class DashboardKPIs(BaseModel):
     """Resposta de /api/v1/kpis/dashboard."""
 

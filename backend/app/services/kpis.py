@@ -8,16 +8,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.cliente import Cliente
 from app.models.lead import Lead, LeadPrioridade, LeadStatus
+from app.models.observacao import Observacao
 from app.models.representante import Representante
 from app.models.stage import Stage
 from app.schemas.kpi import (
     DashboardKPIs,
     FunilStage,
+    LeadProbabilidade,
     LeadRecente,
     MesAgg,
     TopLead,
     TopRep,
 )
+from app.services.probabilidade import calcular_probabilidade
 
 
 META_ANUAL_DEFAULT = Decimal("12000000")  # mesmo valor do legado
@@ -200,7 +203,7 @@ class KpiService:
             .join(Stage, Stage.id == Lead.stage_id)
             .where(Lead.excluido_em.is_(None))
             .order_by(Lead.data_abertura.desc())
-            .limit(6)
+            .limit(10)
         )
         rec_rows = (await self.session.execute(stmt_rec)).all()
         leads_recentes = [
@@ -245,7 +248,7 @@ class KpiService:
             for r in mensal_rows
         ]
 
-        return DashboardKPIs(
+        return DashboardKPIs(  # noqa: R504
             meta_anual=META_ANUAL_DEFAULT,
             total_orcado=total_orcado,
             total_fechado=total_fechado,
@@ -265,3 +268,97 @@ class KpiService:
             top_leads=top_leads,
             leads_recentes=leads_recentes,
         )
+
+    async def probabilidade_fechamento(self) -> list[LeadProbabilidade]:
+        """Calcula probabilidade de fechamento para leads em stages avançados.
+
+        Retorna leads com probabilidade entre 60% e 95%, ordenados decrescente.
+        Analisa as últimas 10 observações de cada lead para detectar palavras-chave.
+        """
+        from sqlalchemy import text as sa_text
+
+        # Busca leads em aberto com suas stages e cliente + últimas 10 obs via subquery
+        stmt = (
+            select(
+                Lead.id,
+                Lead.codigo,
+                Lead.valor,
+                Lead.data_ultima_movimentacao,
+                Lead.projeto_2d_enviado,
+                Lead.projeto_3d_enviado,
+                Lead.probabilidade_override,
+                Cliente.nome_fantasia,
+                Stage.label,
+                Stage.cor,
+                Stage.prob_pct,
+            )
+            .select_from(Lead)
+            .join(Cliente, Cliente.id == Lead.cliente_id)
+            .join(Stage, Stage.id == Lead.stage_id)
+            .where(
+                Lead.excluido_em.is_(None),
+                Lead.status == LeadStatus.EM_ABERTO.value,
+                Stage.prob_pct >= 55,  # stages a partir de negociação/follow_up
+            )
+            .order_by(Lead.data_ultima_movimentacao.desc())
+            .limit(100)  # processa no máximo 100 leads candidatos
+        )
+        rows = (await self.session.execute(stmt)).all()
+
+        resultados: list[tuple[float, LeadProbabilidade]] = []
+
+        for row in rows:
+            (
+                lead_id, codigo, valor, dt_mov,
+                p2d, p3d, prob_override,
+                nome_fantasia, stage_label, stage_cor, stage_prob,
+            ) = row
+
+            # Busca últimas 10 observações do lead
+            obs_stmt = (
+                select(Observacao.texto)
+                .where(Observacao.lead_id == lead_id)
+                .order_by(Observacao.criado_em.desc())
+                .limit(10)
+            )
+            obs_texts = list((await self.session.execute(obs_stmt)).scalars().all())
+
+            # Cria objeto parcial de Lead para o cálculo
+            lead_partial = type("LeadPartial", (), {
+                "projeto_2d_enviado": bool(p2d),
+                "projeto_3d_enviado": bool(p3d),
+                "probabilidade_override": prob_override,
+                "data_ultima_movimentacao": dt_mov,
+            })()
+
+            detalhe = calcular_probabilidade(
+                lead=lead_partial,
+                stage_prob_pct=int(stage_prob),
+                obs_texts=obs_texts,
+                probabilidade_override=prob_override,
+            )
+
+            # Filtra faixa 60-95%
+            if 60.0 <= detalhe.probabilidade_calculada <= 95.0:
+                resultados.append((
+                    detalhe.probabilidade_calculada,
+                    LeadProbabilidade(
+                        id=str(lead_id),
+                        codigo=codigo,
+                        nome_fantasia=nome_fantasia or codigo,
+                        valor=Decimal(valor),
+                        stage_label=stage_label,
+                        stage_cor=stage_cor,
+                        probabilidade_calculada=detalhe.probabilidade_calculada,
+                        probabilidade_base=detalhe.probabilidade_base,
+                        boost_keywords=detalhe.boost_keywords,
+                        boost_projeto=detalhe.boost_projeto,
+                        penalidade_tempo=detalhe.penalidade_tempo,
+                        ajuste_manual=detalhe.ajuste_manual,
+                        keywords_encontradas=detalhe.keywords_encontradas,
+                    ),
+                ))
+
+        # Ordena por probabilidade decrescente, retorna top 15
+        resultados.sort(key=lambda x: x[0], reverse=True)
+        return [r for _, r in resultados[:15]]

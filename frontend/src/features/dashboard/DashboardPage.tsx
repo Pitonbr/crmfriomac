@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 
 import { Spinner } from '@/components/ui/Spinner';
-import { useDashboardKpis } from '@/hooks/queries/useKpis';
+import { useDashboardKpis, useLeadsProbabilidade } from '@/hooks/queries/useKpis';
 import { formatBRL } from '@/lib/formatters';
-import type { DashboardKPIs, LeadRecente, TopLead } from '@/api/schemas';
+import type { DashboardKPIs, LeadProbabilidade, LeadRecente } from '@/api/schemas';
 
 import './dashboard.css';
 
@@ -52,11 +52,6 @@ function prioridadeDot(p: string) {
   return 'var(--success)';
 }
 
-function diasBadge(dias: number) {
-  if (dias > 90) return 'badge-danger';
-  if (dias > 30) return 'badge-warning';
-  return 'badge-success';
-}
 
 function formatDateBR(iso: string) {
   const d = new Date(iso);
@@ -160,58 +155,22 @@ function MonthBars({ mensal, totalOrcado }: { mensal: DashboardKPIs['mensal']; t
 }
 
 // ── Tabela top leads ─────────────────────────────────────────────
-function TopLeadsTable({ leads }: { leads: TopLead[] }) {
-  return (
-    <div className="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>Cliente</th>
-            <th>Valor</th>
-            <th>Dias</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {leads.map(l => (
-            <tr key={l.id} style={{ cursor: 'pointer' }}>
-              <td>
-                <div style={{ fontWeight: 600, fontSize: '.82rem', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {l.nome_fantasia}
-                </div>
-                <div style={{ fontSize: '.7rem', color: 'var(--text-3)' }}>#{l.codigo}</div>
-              </td>
-              <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{formatBRL(l.valor)}</td>
-              <td>
-                <span className={`badge ${diasBadge(l.dias_aberto)}`}>{l.dias_aberto}d</span>
-              </td>
-              <td>
-                <span className="badge badge-info" style={{ fontSize: '.65rem' }}>
-                  {l.stage_icone} {l.stage_label.split(' ')[0]}
-                </span>
-              </td>
-            </tr>
-          ))}
-          {leads.length === 0 && (
-            <tr>
-              <td colSpan={4} style={{ textAlign: 'center', padding: 20, color: 'var(--text-3)' }}>
-                Nenhum lead em aberto
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// ── Lista de atividade recente ────────────────────────────────────
+// ── Lista de atividade recente (clicável → abre LeadModal) ────────
 function ActivityList({ leads }: { leads: LeadRecente[] }) {
+  const navigate = useNavigate();
   return (
     <div className="card-body" style={{ padding: '8px 16px' }}>
       <div className="activity-list">
         {leads.map(l => (
-          <div key={l.id} className="activity-item" style={{ cursor: 'pointer' }}>
+          <div
+            key={l.id}
+            className="activity-item"
+            style={{ cursor: 'pointer' }}
+            onClick={() => navigate(`/kanban/leads/${l.id}`)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={e => { if (e.key === 'Enter') navigate(`/kanban/leads/${l.id}`); }}
+          >
             <div className="activity-dot" style={{ background: prioridadeDot(l.prioridade) }} />
             <div className="activity-content">
               <strong>{l.nome_fantasia}</strong>
@@ -230,9 +189,82 @@ function ActivityList({ leads }: { leads: LeadRecente[] }) {
   );
 }
 
+// ── Widget de Probabilidade de Fechamento ─────────────────────────
+function ProbabilidadeTable({ leads }: { leads: LeadProbabilidade[] }) {
+  const navigate = useNavigate();
+
+  function probColor(p: number): string {
+    if (p >= 85) return 'var(--success, #16A34A)';
+    if (p >= 70) return 'var(--warning, #D97706)';
+    return 'var(--accent, #E8500A)';
+  }
+
+  return (
+    <div className="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Probabilidade</th>
+            <th>Estágio</th>
+            <th style={{ textAlign: 'right' }}>Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {leads.map(l => (
+            <tr
+              key={l.id}
+              style={{ cursor: 'pointer' }}
+              onClick={() => navigate(`/kanban/leads/${l.id}`)}
+            >
+              <td>
+                <div style={{ fontWeight: 600, fontSize: '.82rem', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {l.nome_fantasia}
+                </div>
+                <div style={{ fontSize: '.7rem', color: 'var(--text-3)' }}>#{l.codigo}</div>
+              </td>
+              <td style={{ minWidth: 120 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ flex: 1, height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${l.probabilidade_calculada}%`, background: probColor(l.probabilidade_calculada), borderRadius: 3, transition: 'width .4s' }} />
+                  </div>
+                  <span style={{ fontSize: '.78rem', fontWeight: 700, color: probColor(l.probabilidade_calculada), minWidth: 36 }}>
+                    {l.probabilidade_calculada.toFixed(0)}%
+                  </span>
+                </div>
+                {l.keywords_encontradas.length > 0 && (
+                  <div style={{ fontSize: '.66rem', color: 'var(--success)', marginTop: 2 }} title={l.keywords_encontradas.join(', ')}>
+                    💬 {l.keywords_encontradas[0]}{l.keywords_encontradas.length > 1 ? ` +${l.keywords_encontradas.length - 1}` : ''}
+                  </div>
+                )}
+              </td>
+              <td>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '.72rem', padding: '2px 8px', borderRadius: 20, background: `${l.stage_cor}20`, color: l.stage_cor, fontWeight: 600 }}>
+                  {l.stage_label.split(' ')[0]}
+                </span>
+              </td>
+              <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--primary)', fontSize: '.85rem' }}>
+                {formatBRL(l.valor)}
+              </td>
+            </tr>
+          ))}
+          {leads.length === 0 && (
+            <tr>
+              <td colSpan={4} style={{ textAlign: 'center', padding: 30, color: 'var(--text-3)', fontSize: '.84rem' }}>
+                Nenhum lead com probabilidade entre 60% e 95% no momento.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ── Dashboard principal ───────────────────────────────────────────
 export function DashboardPage() {
   const { data, isPending, isError } = useDashboardKpis();
+  const { data: probLeads } = useLeadsProbabilidade();
   const navigate = useNavigate();
 
   if (isPending) {
@@ -369,18 +401,15 @@ export function DashboardPage() {
 
       {/* ── TABELAS INFERIORES (2 colunas — idêntico ao legado) ──── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-        {/* Maiores Orçamentos em Aberto */}
+        {/* Clientes com maior probabilidade de fechamento */}
         <div className="card">
           <div className="card-header">
-            <div className="card-title">💰 Maiores Orçamentos em Aberto</div>
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => navigate('/kanban')}
-            >
+            <div className="card-title">🎯 Clientes com Maior Probabilidade de Fechamento</div>
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/kanban')}>
               Ver todos →
             </button>
           </div>
-          <TopLeadsTable leads={data.top_leads} />
+          <ProbabilidadeTable leads={probLeads ?? []} />
         </div>
 
         {/* Últimos Leads Cadastrados */}

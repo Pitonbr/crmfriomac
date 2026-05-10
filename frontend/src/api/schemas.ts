@@ -245,6 +245,23 @@ export const LeadRecenteSchema = z.object({
 });
 export type LeadRecente = z.infer<typeof LeadRecenteSchema>;
 
+export const LeadProbabilidadeSchema = z.object({
+  id: z.string(),
+  codigo: z.string(),
+  nome_fantasia: z.string(),
+  valor: z.coerce.number(),
+  stage_label: z.string(),
+  stage_cor: z.string(),
+  probabilidade_calculada: z.number(),
+  probabilidade_base: z.number(),
+  boost_keywords: z.number(),
+  boost_projeto: z.number(),
+  penalidade_tempo: z.number(),
+  ajuste_manual: z.number(),
+  keywords_encontradas: z.array(z.string()),
+});
+export type LeadProbabilidade = z.infer<typeof LeadProbabilidadeSchema>;
+
 // ── Notificacao ─────────────────────────────────────────────────────
 export const NotificacaoTipoSchema = z.enum([
   'sla_estourando',
