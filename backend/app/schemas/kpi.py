@@ -1,5 +1,6 @@
 """Schemas para o Dashboard KPIs (calculados via queries SQL no service)."""
 
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel
@@ -8,6 +9,7 @@ from pydantic import BaseModel
 class FunilStage(BaseModel):
     stage_id: str
     label: str
+    icone: str
     cor: str
     ordem: int
     qtd_leads: int
@@ -29,18 +31,48 @@ class MesAgg(BaseModel):
     valor_fech: Decimal
 
 
+class TopLead(BaseModel):
+    """Um dos maiores orçamentos em aberto (para a tabela do dashboard)."""
+    id: str
+    codigo: str
+    nome_fantasia: str
+    valor: Decimal
+    dias_aberto: int
+    stage_label: str
+    stage_icone: str
+    stage_cor: str
+    prioridade: str
+
+
+class LeadRecente(BaseModel):
+    """Último lead cadastrado (para a lista de atividade)."""
+    id: str
+    codigo: str
+    nome_fantasia: str
+    valor: Decimal
+    stage_label: str
+    prioridade: str
+    data_abertura: datetime
+
+
 class DashboardKPIs(BaseModel):
     """Resposta de /api/v1/kpis/dashboard."""
 
     meta_anual: Decimal
     total_orcado: Decimal
     total_fechado: Decimal
+    total_perdido: Decimal
     qtd_leads_abertos: int
     qtd_leads_ganhos: int
     qtd_leads_perdidos: int
+    leads_alta_prioridade: int
+    leads_mais_90_dias: int
+    vendedores_ativos: int
     taxa_conversao: float          # %
     ticket_medio: Decimal
-    valor_pipeline_ponderado: Decimal  # soma de valor * prob_pct/100
+    valor_pipeline_ponderado: Decimal
     funil: list[FunilStage]
     top_reps: list[TopRep]
     mensal: list[MesAgg]
+    top_leads: list[TopLead]
+    leads_recentes: list[LeadRecente]

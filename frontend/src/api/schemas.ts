@@ -196,6 +196,7 @@ export type Entrega = z.infer<typeof EntregaSchema>;
 export const FunilStageSchema = z.object({
   stage_id: z.string(),
   label: z.string(),
+  icone: z.string().default('📋'),
   cor: z.string(),
   ordem: z.number().int(),
   qtd_leads: z.number().int(),
@@ -219,6 +220,30 @@ export const MesAggSchema = z.object({
   valor_fech: z.coerce.number(),
 });
 export type MesAgg = z.infer<typeof MesAggSchema>;
+
+export const TopLeadSchema = z.object({
+  id: z.string(),
+  codigo: z.string(),
+  nome_fantasia: z.string(),
+  valor: z.coerce.number(),
+  dias_aberto: z.number().int(),
+  stage_label: z.string(),
+  stage_icone: z.string(),
+  stage_cor: z.string(),
+  prioridade: z.string(),
+});
+export type TopLead = z.infer<typeof TopLeadSchema>;
+
+export const LeadRecenteSchema = z.object({
+  id: z.string(),
+  codigo: z.string(),
+  nome_fantasia: z.string(),
+  valor: z.coerce.number(),
+  stage_label: z.string(),
+  prioridade: z.string(),
+  data_abertura: z.string(),
+});
+export type LeadRecente = z.infer<typeof LeadRecenteSchema>;
 
 // ── Notificacao ─────────────────────────────────────────────────────
 export const NotificacaoTipoSchema = z.enum([
@@ -255,14 +280,20 @@ export const DashboardKPIsSchema = z.object({
   meta_anual: z.coerce.number(),
   total_orcado: z.coerce.number(),
   total_fechado: z.coerce.number(),
+  total_perdido: z.coerce.number(),
   qtd_leads_abertos: z.number().int(),
   qtd_leads_ganhos: z.number().int(),
   qtd_leads_perdidos: z.number().int(),
+  leads_alta_prioridade: z.number().int(),
+  leads_mais_90_dias: z.number().int(),
+  vendedores_ativos: z.number().int(),
   taxa_conversao: z.number(),
   ticket_medio: z.coerce.number(),
   valor_pipeline_ponderado: z.coerce.number(),
   funil: z.array(FunilStageSchema),
   top_reps: z.array(TopRepSchema),
   mensal: z.array(MesAggSchema),
+  top_leads: z.array(TopLeadSchema),
+  leads_recentes: z.array(LeadRecenteSchema),
 });
 export type DashboardKPIs = z.infer<typeof DashboardKPIsSchema>;
