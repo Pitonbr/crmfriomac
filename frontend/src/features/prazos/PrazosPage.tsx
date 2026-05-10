@@ -14,7 +14,6 @@ import '@/features/clientes/clientes.css'
 
 // ── Types ────────────────────────────────────────────────────────────
 
-/** Campos extras que o backend pode devolver mas ainda não estão no schema base */
 interface EntregaExtra extends Entrega {
   satisfacao?: number | null
   retrabalho?: boolean | null
@@ -72,32 +71,15 @@ async function updateEntrega(id: string, body: object) {
   })
 }
 
-// ── Sub-components ────────────────────────────────────────────────────
-
-function SatisfacaoStars({ value }: { value: number | null | undefined }) {
-  if (!value) return <span style={{ color: 'var(--text-3)' }}>—</span>
-  return <span title={`${value} de 5`}>{'⭐'.repeat(value)}</span>
-}
-
-function TruncatedText({ text, maxLen = 60 }: { text: string | null | undefined; maxLen?: number }) {
-  if (!text) return <span style={{ color: 'var(--text-3)' }}>—</span>
-  if (text.length <= maxLen) return <span>{text}</span>
-  return (
-    <span title={text}>
-      {text.slice(0, maxLen)}
-      <span style={{ color: 'var(--text-3)' }}>…</span>
-    </span>
-  )
-}
-
 // ── Edit Modal ────────────────────────────────────────────────────────
 
 interface EditModalProps {
   entrega: EntregaExtra
   onClose: () => void
+  isMaster: boolean
 }
 
-function EditModal({ entrega, onClose }: EditModalProps) {
+function EditModal({ entrega, onClose, isMaster }: EditModalProps) {
   const qc = useQueryClient()
 
   const [form, setForm] = useState<EditForm>({
@@ -139,43 +121,78 @@ function EditModal({ entrega, onClose }: EditModalProps) {
       !!form.prazo_real &&
       form.prazo_real > form.prazo_estimado)
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    height: 38,
+    padding: '0 10px',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)',
+    background: 'var(--surface)',
+    color: 'var(--text-1)',
+    fontSize: '0.875rem',
+    boxSizing: 'border-box',
+  }
+
+  const labelStyle: React.CSSProperties = {
+    display: 'block',
+    marginBottom: 6,
+    fontSize: '0.85rem',
+    fontWeight: 600,
+    color: 'var(--text-2)',
+  }
+
   return (
     <Dialog
       open
       onOpenChange={(open) => { if (!open) onClose() }}
-      title="Editar Entrega"
-      description={`Lead ${entrega.lead_id.slice(0, 8)}`}
+      title={`📦 Entrega — ${entrega.lead_id.slice(0, 8)}`}
+      description=""
       width={600}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        {/* Status */}
+        {/* Info grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: '12px 14px', background: 'var(--surface-2)', borderRadius: 'var(--radius)', fontSize: '0.8rem', color: 'var(--text-2)' }}>
+          <div>
+            <strong style={{ display: 'block', marginBottom: 2, color: 'var(--text-3)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>Lead ID</strong>
+            <code style={{ fontSize: '0.8rem' }}>{entrega.lead_id}</code>
+          </div>
+          <div>
+            <strong style={{ display: 'block', marginBottom: 2, color: 'var(--text-3)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>Status atual</strong>
+            <span className={`badge ${STATUS_BADGE[entrega.status] ?? 'badge-muted'}`}>
+              {STATUS_LABEL[entrega.status] ?? entrega.status}
+            </span>
+          </div>
+        </div>
+
+        {/* Status — somente master */}
+        {isMaster && (
+          <div className="form-group">
+            <label htmlFor="edit-status" style={labelStyle}>Status</label>
+            <select
+              id="edit-status"
+              value={form.status}
+              onChange={(e) => set('status', e.target.value as EntregaStatus)}
+              style={inputStyle}
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Satisfação */}
         <div className="form-group">
-          <label
-            htmlFor="edit-status"
-            style={{ display: 'block', marginBottom: 6, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-2)' }}
-          >
-            Status
-          </label>
+          <label htmlFor="edit-satisfacao" style={labelStyle}>Satisfação do Cliente</label>
           <select
-            id="edit-status"
-            value={form.status}
-            onChange={(e) => set('status', e.target.value as EntregaStatus)}
-            style={{
-              width: '100%',
-              height: 38,
-              padding: '0 10px',
-              border: 'var(--border-w, 1px) solid var(--border)',
-              borderRadius: 'var(--radius)',
-              background: 'var(--surface)',
-              color: 'var(--text-1)',
-              fontSize: '0.875rem',
-            }}
+            id="edit-satisfacao"
+            value={form.satisfacao}
+            onChange={(e) => set('satisfacao', Number(e.target.value))}
+            style={inputStyle}
           >
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
+            {SATISFACAO_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
         </div>
@@ -183,99 +200,41 @@ function EditModal({ entrega, onClose }: EditModalProps) {
         {/* Prazos */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div className="form-group">
-            <label
-              htmlFor="edit-prazo-estimado"
-              style={{ display: 'block', marginBottom: 6, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-2)' }}
-            >
-              Prazo Estimado
-            </label>
+            <label htmlFor="edit-prazo-estimado" style={labelStyle}>Prazo Estimado</label>
             <input
               id="edit-prazo-estimado"
               type="date"
               value={form.prazo_estimado}
               onChange={(e) => set('prazo_estimado', e.target.value)}
-              style={{
-                width: '100%',
-                height: 38,
-                padding: '0 10px',
-                border: 'var(--border-w, 1px) solid var(--border)',
-                borderRadius: 'var(--radius)',
-                background: 'var(--surface)',
-                color: 'var(--text-1)',
-                fontSize: '0.875rem',
-                boxSizing: 'border-box',
-              }}
+              style={inputStyle}
             />
           </div>
 
           <div className="form-group">
-            <label
-              htmlFor="edit-prazo-real"
-              style={{ display: 'block', marginBottom: 6, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-2)' }}
-            >
-              Prazo Real
-            </label>
+            <label htmlFor="edit-prazo-real" style={labelStyle}>Prazo Real</label>
             <input
               id="edit-prazo-real"
               type="date"
               value={form.prazo_real}
               onChange={(e) => set('prazo_real', e.target.value)}
               style={{
-                width: '100%',
-                height: 38,
-                padding: '0 10px',
-                border: `var(--border-w, 1px) solid ${isPrazoRealAtrasado ? 'var(--danger)' : 'var(--border)'}`,
-                borderRadius: 'var(--radius)',
+                ...inputStyle,
+                border: `1px solid ${isPrazoRealAtrasado ? 'var(--danger)' : 'var(--border)'}`,
                 background: isPrazoRealAtrasado ? 'var(--danger-bg)' : 'var(--surface)',
                 color: isPrazoRealAtrasado ? 'var(--danger)' : 'var(--text-1)',
-                fontSize: '0.875rem',
-                boxSizing: 'border-box',
               }}
             />
             {isPrazoRealAtrasado && (
-              <p style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 4 }}>
+              <p style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: 4, marginBottom: 0 }}>
                 Entrega fora do prazo estimado
               </p>
             )}
           </div>
         </div>
 
-        {/* Satisfação */}
-        <div className="form-group">
-          <label
-            htmlFor="edit-satisfacao"
-            style={{ display: 'block', marginBottom: 6, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-2)' }}
-          >
-            Satisfação do Cliente
-          </label>
-          <select
-            id="edit-satisfacao"
-            value={form.satisfacao}
-            onChange={(e) => set('satisfacao', Number(e.target.value))}
-            style={{
-              width: '100%',
-              height: 38,
-              padding: '0 10px',
-              border: 'var(--border-w, 1px) solid var(--border)',
-              borderRadius: 'var(--radius)',
-              background: 'var(--surface)',
-              color: 'var(--text-1)',
-              fontSize: '0.875rem',
-            }}
-          >
-            {SATISFACAO_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
         {/* Retrabalho */}
         <div className="form-group">
-          <label
-            style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-1)' }}
-          >
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-1)' }}>
             <input
               type="checkbox"
               checked={form.retrabalho}
@@ -302,7 +261,7 @@ function EditModal({ entrega, onClose }: EditModalProps) {
                 style={{
                   width: '100%',
                   padding: '8px 10px',
-                  border: 'var(--border-w, 1px) solid var(--border)',
+                  border: '1px solid var(--border)',
                   borderRadius: 'var(--radius)',
                   background: 'var(--surface)',
                   color: 'var(--text-1)',
@@ -317,12 +276,7 @@ function EditModal({ entrega, onClose }: EditModalProps) {
 
         {/* Observações */}
         <div className="form-group">
-          <label
-            htmlFor="edit-obs"
-            style={{ display: 'block', marginBottom: 6, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-2)' }}
-          >
-            Observações
-          </label>
+          <label htmlFor="edit-obs" style={labelStyle}>Observações</label>
           <textarea
             id="edit-obs"
             rows={3}
@@ -332,7 +286,7 @@ function EditModal({ entrega, onClose }: EditModalProps) {
             style={{
               width: '100%',
               padding: '8px 10px',
-              border: 'var(--border-w, 1px) solid var(--border)',
+              border: '1px solid var(--border)',
               borderRadius: 'var(--radius)',
               background: 'var(--surface)',
               color: 'var(--text-1)',
@@ -350,7 +304,7 @@ function EditModal({ entrega, onClose }: EditModalProps) {
           </p>
         )}
 
-        {/* Buttons */}
+        {/* Footer */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 4 }}>
           <button
             type="button"
@@ -359,7 +313,7 @@ function EditModal({ entrega, onClose }: EditModalProps) {
             style={{
               height: 38,
               padding: '0 18px',
-              border: 'var(--border-w, 1px) solid var(--border)',
+              border: '1px solid var(--border)',
               borderRadius: 'var(--radius)',
               background: 'var(--surface)',
               color: 'var(--text-1)',
@@ -405,6 +359,7 @@ export function PrazosPage() {
   const { data, isPending, isError } = useEntregas()
   const [editingId, setEditingId] = useState<string | null>(null)
 
+  const isAdmin = user?.role === 'master'
   const canEdit = user?.role === 'master' || user?.role === 'vendedor'
 
   if (isPending) {
@@ -425,152 +380,279 @@ export function PrazosPage() {
 
   const entregas = (data ?? []) as EntregaExtra[]
   const atrasadas = entregas.filter((e) => e.status === 'atrasada').length
+  const entreguesNoPrazo = entregas.filter((e) => e.status === 'entregue').length
+  const emProducao = entregas.filter((e) => e.status === 'em_producao').length
   const editingEntrega = editingId ? entregas.find((e) => e.id === editingId) ?? null : null
 
   return (
     <div className="page-padded">
 
-      {/* Alert banner */}
+      {/* Delivery Alert Banner */}
       {atrasadas > 0 && (
         <div
-          role="alert"
+          className="delivery-alert"
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
-            padding: '10px 16px',
+            gap: 12,
+            padding: '14px 18px',
+            background: 'var(--warning-bg, #FEF3C7)',
+            border: '1px solid #FCD34D',
             borderRadius: 'var(--radius)',
-            background: 'var(--danger-bg)',
-            border: '1px solid var(--danger)',
-            color: 'var(--danger)',
-            fontSize: '0.875rem',
-            fontWeight: 600,
+            marginBottom: 20,
+            fontSize: '.85rem',
+            color: '#92400E',
           }}
         >
-          <span aria-hidden>⚠</span>
-          <span>
-            {atrasadas} entrega{atrasadas !== 1 ? 's' : ''} com atraso — verifique imediatamente e acione o time de produção.
-          </span>
+          ⚠️ <strong>{atrasadas} entrega(s) atrasada(s)!</strong> Verificar imediatamente e acionar time de produção.
         </div>
       )}
 
-      {/* Toolbar */}
-      <div className="page-toolbar">
-        <h1>Prazo de Entrega</h1>
-        <span className="page-count">{entregas.length} entregas</span>
+      {/* Stats Row */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: 12,
+          marginBottom: 20,
+        }}
+      >
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius)',
+            padding: '12px 16px',
+            textAlign: 'center',
+          }}
+        >
+          <strong style={{ display: 'block', fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary)' }}>
+            {entregas.length}
+          </strong>
+          <span style={{ fontSize: '.72rem', color: 'var(--text-3)' }}>Entregas registradas</span>
+        </div>
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius)',
+            padding: '12px 16px',
+            textAlign: 'center',
+          }}
+        >
+          <strong style={{ display: 'block', fontSize: '1.2rem', fontWeight: 800, color: 'var(--success)' }}>
+            {entreguesNoPrazo}
+          </strong>
+          <span style={{ fontSize: '.72rem', color: 'var(--text-3)' }}>Entregues no prazo</span>
+        </div>
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius)',
+            padding: '12px 16px',
+            textAlign: 'center',
+          }}
+        >
+          <strong style={{ display: 'block', fontSize: '1.2rem', fontWeight: 800, color: 'var(--danger)' }}>
+            {atrasadas}
+          </strong>
+          <span style={{ fontSize: '.72rem', color: 'var(--text-3)' }}>Atrasadas</span>
+        </div>
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius)',
+            padding: '12px 16px',
+            textAlign: 'center',
+          }}
+        >
+          <strong style={{ display: 'block', fontSize: '1.2rem', fontWeight: 800, color: 'var(--warning)' }}>
+            {emProducao}
+          </strong>
+          <span style={{ fontSize: '.72rem', color: 'var(--text-3)' }}>Em produção</span>
+        </div>
       </div>
 
-      {/* Table */}
-      <div className="table-wrap">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Lead</th>
-              <th>Status</th>
-              <th>Prazo Estimado</th>
-              <th>Prazo Real</th>
-              <th>Satisfação</th>
-              <th>Retrabalho</th>
-              <th>Observações</th>
-              <th>Ação</th>
-            </tr>
-          </thead>
-          <tbody>
-            {entregas.map((e) => (
-              <tr key={e.id}>
-                {/* Lead */}
-                <td>
-                  <code style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>
-                    {e.lead_id.slice(0, 8)}…
-                  </code>
-                </td>
+      {/* Toolbar */}
+      <div className="toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div className="section-title" style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-1)' }}>
+          📦 Controle de Prazo de Entrega
+        </div>
+        {isAdmin && (
+          <button
+            type="button"
+            style={{
+              height: 36,
+              padding: '0 16px',
+              border: 'none',
+              borderRadius: 'var(--radius)',
+              background: 'var(--accent, #2563eb)',
+              color: '#fff',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            + Nova Entrega
+          </button>
+        )}
+      </div>
 
-                {/* Status */}
-                <td>
-                  <span className={`badge ${STATUS_BADGE[e.status] ?? 'badge-muted'}`}>
-                    {STATUS_LABEL[e.status] ?? e.status}
-                  </span>
-                </td>
+      {/* Card com tabela */}
+      <div className="card" style={{ overflow: 'hidden' }}>
 
-                {/* Prazo Estimado */}
-                <td>{formatDate(e.prazo_estimado)}</td>
+        {/* Policy Banner */}
+        <div style={{ padding: '14px 18px', background: 'var(--surface-2)', borderBottom: '1px solid var(--border)', fontSize: '.78rem', color: 'var(--text-2)' }}>
+          ⚠️ <strong>POLÍTICA FRIOMAC:</strong> 98% de entregas no prazo | Multa contratual por dia de atraso | Garantia de entrega = diferencial Friomac
+        </div>
 
-                {/* Prazo Real */}
-                <td
-                  style={{
-                    color: e.status === 'atrasada' ? 'var(--danger)' : undefined,
-                    fontWeight: e.status === 'atrasada' ? 600 : undefined,
-                  }}
-                >
-                  {formatDate(e.prazo_real)}
-                </td>
+        {/* Empty state */}
+        {entregas.length === 0 ? (
+          <div className="empty-state" style={{ padding: 50 }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 16 }}>
+              <path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14" />
+              <path d="M16.5 9.4 7.55 4.24" />
+              <polyline points="3.29 7 12 12 20.71 7" />
+              <line x1="12" y1="22" x2="12" y2="12" />
+              <circle cx="18.5" cy="15.5" r="2.5" />
+              <path d="M20.27 17.27 22 19" />
+            </svg>
+            <h3 style={{ margin: '0 0 8px', fontSize: '1rem', color: 'var(--text-1)' }}>Nenhuma entrega registrada</h3>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-3)' }}>
+              Elas são criadas automaticamente quando um lead é marcado como GANHO.
+            </p>
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Nº Orç</th>
+                  <th>Cliente</th>
+                  <th>Vendedor</th>
+                  <th>Pedido</th>
+                  <th>Previsão Entrega</th>
+                  <th>Entrega Real</th>
+                  <th>Dias Atraso</th>
+                  <th>Status</th>
+                  <th>Multa/Dia</th>
+                  <th>Multa Total</th>
+                  <th>Satisfação</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entregas.map((e) => {
+                  const diasAtraso =
+                    e.prazo_real && e.prazo_estimado && e.prazo_real > e.prazo_estimado
+                      ? Math.round(
+                          (new Date(e.prazo_real).getTime() - new Date(e.prazo_estimado).getTime()) /
+                            (1000 * 60 * 60 * 24),
+                        )
+                      : null
 
-                {/* Satisfação */}
-                <td>
-                  <SatisfacaoStars value={e.satisfacao} />
-                </td>
+                  return (
+                    <tr key={e.id}>
+                      {/* Nº Orç */}
+                      <td>
+                        <code style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--text-2)' }}>
+                          #{e.lead_id.slice(0, 8)}
+                        </code>
+                      </td>
 
-                {/* Retrabalho */}
-                <td>
-                  {e.retrabalho ? (
-                    <span className="badge badge-danger" title={e.retrabalho_descricao ?? ''}>
-                      Sim
-                    </span>
-                  ) : (
-                    <span style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>—</span>
-                  )}
-                </td>
+                      {/* Cliente */}
+                      <td style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>—</td>
 
-                {/* Observações */}
-                <td style={{ maxWidth: 260 }}>
-                  <TruncatedText text={e.observacoes} maxLen={55} />
-                </td>
+                      {/* Vendedor */}
+                      <td style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>—</td>
 
-                {/* Ação */}
-                <td>
-                  {canEdit ? (
-                    <button
-                      type="button"
-                      onClick={() => setEditingId(e.id)}
-                      style={{
-                        height: 30,
-                        padding: '0 12px',
-                        border: 'var(--border-w, 1px) solid var(--border)',
-                        borderRadius: 'var(--radius)',
-                        background: 'var(--surface)',
-                        color: 'var(--text-1)',
-                        fontSize: '0.8rem',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      Editar
-                    </button>
-                  ) : (
-                    <span style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>—</span>
-                  )}
-                </td>
-              </tr>
-            ))}
+                      {/* Pedido */}
+                      <td>{formatDate(e.criado_em)}</td>
 
-            {entregas.length === 0 && (
-              <tr>
-                <td
-                  colSpan={8}
-                  style={{ textAlign: 'center', padding: 48, color: 'var(--text-3)' }}
-                >
-                  Nenhuma entrega ainda. Elas são criadas automaticamente quando um lead é marcado como GANHO.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                      {/* Previsão Entrega */}
+                      <td>{formatDate(e.prazo_estimado)}</td>
+
+                      {/* Entrega Real */}
+                      <td>
+                        {e.prazo_real
+                          ? formatDate(e.prazo_real)
+                          : <span style={{ color: 'var(--text-3)' }}>—</span>
+                        }
+                      </td>
+
+                      {/* Dias Atraso */}
+                      <td>
+                        {diasAtraso !== null ? (
+                          <span className="badge badge-danger">+{diasAtraso}d</span>
+                        ) : (
+                          <span className="badge badge-success">No prazo</span>
+                        )}
+                      </td>
+
+                      {/* Status */}
+                      <td>
+                        <span className={`badge ${STATUS_BADGE[e.status] ?? 'badge-muted'}`}>
+                          {STATUS_LABEL[e.status] ?? e.status}
+                        </span>
+                      </td>
+
+                      {/* Multa/Dia */}
+                      <td style={{ color: 'var(--text-3)' }}>—</td>
+
+                      {/* Multa Total */}
+                      <td style={{ color: 'var(--text-3)' }}>—</td>
+
+                      {/* Satisfação */}
+                      <td>
+                        {e.satisfacao
+                          ? <span title={`${e.satisfacao} de 5`}>{'⭐'.repeat(e.satisfacao)}</span>
+                          : <span style={{ color: 'var(--text-3)' }}>—</span>
+                        }
+                      </td>
+
+                      {/* Ações */}
+                      <td>
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            onClick={() => setEditingId(e.id)}
+                            style={{
+                              height: 30,
+                              padding: '0 12px',
+                              border: '1px solid var(--border)',
+                              borderRadius: 'var(--radius)',
+                              background: 'var(--surface)',
+                              color: 'var(--text-1)',
+                              fontSize: '0.8rem',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            Editar
+                          </button>
+                        ) : (
+                          <span style={{ color: 'var(--text-3)', fontSize: '0.8rem' }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Edit Modal */}
       {editingEntrega && (
         <EditModal
           entrega={editingEntrega}
+          isMaster={isAdmin}
           onClose={() => setEditingId(null)}
         />
       )}
