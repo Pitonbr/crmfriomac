@@ -28,3 +28,19 @@ export async function createCliente(payload: ClienteCreatePayload): Promise<Clie
   const data = await http<unknown>('/api/v1/clientes', { method: 'POST', body: payload });
   return ClienteSchema.parse(data);
 }
+
+export interface ClienteUpdatePayload {
+  nome_fantasia?: string;
+  nome_contato?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  cnpj?: string | null;
+  segmento?: string | null;
+}
+
+export async function updateCliente(id: string, payload: ClienteUpdatePayload): Promise<Cliente> {
+  const data = await http<unknown>(`/api/v1/clientes/${id}`, { method: 'PATCH', body: payload });
+  return ClienteSchema.parse(data);
+}

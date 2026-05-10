@@ -4,7 +4,6 @@ import {
   addObservacao,
   concluirLead,
   createLead,
-  deleteAnexo,
   type LeadCreatePayload,
   type LeadFilters,
   type LeadUpdatePayload,
@@ -14,6 +13,7 @@ import {
   listLeads,
   listObservacoes,
   moveLeadStage,
+  reativarLead,
   updateLead,
   uploadAnexo,
 } from '@/api/leads';
@@ -121,6 +121,14 @@ export function useAddObservacao() {
   });
 }
 
+export function useReativarLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (leadId: string) => reativarLead(leadId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: LEADS_KEY }),
+  });
+}
+
 export function useUpdateLead() {
   const qc = useQueryClient();
   return useMutation({
@@ -149,11 +157,3 @@ export function useUploadAnexo() {
   });
 }
 
-export function useDeleteAnexo() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (vars: { leadId: string; anexoId: string }) => deleteAnexo(vars.anexoId),
-    onSuccess: (_data, vars) =>
-      qc.invalidateQueries({ queryKey: [...LEADS_KEY, vars.leadId, 'anexos'] }),
-  });
-}

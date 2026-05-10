@@ -49,13 +49,21 @@ export function KanbanBoard({ stages, leads, clientes, reps }: Props) {
     return { byStage, ganhoLeads, perdidoLeads };
   }, [stages, leads]);
 
+  const validStageIds = useMemo(() => new Set(stages.map((s) => s.id)), [stages]);
+
   const handleDragEnd = (event: DragEndEvent) => {
     const leadId = String(event.active.id);
     const newStageId = event.over ? String(event.over.id) : null;
     if (!newStageId) return;
 
+    // Ignora drop em colunas que não são stages reais (outcome columns, área vazia)
+    if (!validStageIds.has(newStageId)) return;
+
     const lead = leads.find((l) => l.id === leadId);
     if (!lead || lead.stage_id === newStageId) return;
+
+    // Só leads em aberto podem ser movidos via drag
+    if (lead.status !== 'em_aberto') return;
 
     moveStage.mutate(
       { leadId, stage_id: newStageId },

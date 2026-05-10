@@ -1,8 +1,10 @@
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import type { Cliente, Lead, Representante } from '@/api/schemas';
+import { useReativarLead } from '@/hooks/queries/useLeads';
 import { formatBRL, formatRelative } from '@/lib/formatters';
 
 interface Props {
@@ -44,6 +46,7 @@ export { fileIconForContentType };
 
 export function KanbanCard({ lead, cliente, rep }: Props) {
   const navigate = useNavigate();
+  const reativar = useReativarLead();
   const isOutcome = lead.status === 'ganho' || lead.status === 'perdido';
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -107,6 +110,24 @@ export function KanbanCard({ lead, cliente, rep }: Props) {
           </span>
         )}
       </div>
+
+      {/* Reativar button — only for perdido leads */}
+      {lead.status === 'perdido' && (
+        <button
+          type="button"
+          className="kb-card-reativar"
+          disabled={reativar.isPending}
+          onClick={(e) => {
+            e.stopPropagation();
+            reativar.mutate(lead.id, {
+              onSuccess: () => toast.success('Lead reativado para Reativação'),
+              onError: (err) => toast.error(err instanceof Error ? err.message : 'Erro'),
+            });
+          }}
+        >
+          ↺ Reativar
+        </button>
+      )}
     </button>
   );
 }

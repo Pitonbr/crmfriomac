@@ -6,11 +6,10 @@ import { Dialog } from '@/components/ui/Dialog';
 import { Spinner } from '@/components/ui/Spinner';
 import { getAnexoDownloadUrl } from '@/api/leads';
 import type { Lead } from '@/api/schemas';
-import { useCliente } from '@/hooks/queries/useClientes';
+import { useCliente, useUpdateCliente } from '@/hooks/queries/useClientes';
 import {
   useAddObservacao,
   useAnexos,
-  useDeleteAnexo,
   useLead,
   useObservacoes,
   useUpdateLead,
@@ -35,12 +34,22 @@ export function LeadModal() {
 
   const addObs = useAddObservacao();
   const updateLead = useUpdateLead();
+  const updateCliente = useUpdateCliente();
   const uploadAnexo = useUploadAnexo();
-  const deleteAnexo = useDeleteAnexo();
 
   const [tab, setTab] = useState<Tab>('info');
   const [showOutcome, setShowOutcome] = useState(false);
   const [outcomeTab, setOutcomeTab] = useState<'ganho' | 'perdido'>('ganho');
+
+  // Client edit state
+  const [editClientMode, setEditClientMode] = useState(false);
+  const [editCliNome, setEditCliNome] = useState('');
+  const [editCliContato, setEditCliContato] = useState('');
+  const [editCliTel, setEditCliTel] = useState('');
+  const [editCliEmail, setEditCliEmail] = useState('');
+  const [editCliCidade, setEditCliCidade] = useState('');
+  const [editCliEstado, setEditCliEstado] = useState('');
+  const [editCliCnpj, setEditCliCnpj] = useState('');
 
   // Obs state
   const [novaObs, setNovaObs] = useState('');
@@ -119,17 +128,6 @@ export function LeadModal() {
     }
   };
 
-  const handleDeleteAnexo = async (anexoId: string) => {
-    if (!leadId) return;
-    if (!confirm('Excluir este arquivo?')) return;
-    try {
-      await deleteAnexo.mutateAsync({ leadId, anexoId });
-      toast.success('Arquivo removido');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao excluir');
-    }
-  };
-
   const handleDownload = async (anexoId: string, nome: string) => {
     try {
       const url = `${getAnexoDownloadUrl(anexoId)}`;
@@ -144,6 +142,40 @@ export function LeadModal() {
       URL.revokeObjectURL(objectUrl);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro no download');
+    }
+  };
+
+  const startClientEdit = () => {
+    if (!cliente) return;
+    setEditCliNome(cliente.nome_fantasia);
+    setEditCliContato(cliente.nome_contato ?? '');
+    setEditCliTel(cliente.telefone ?? '');
+    setEditCliEmail(cliente.email ?? '');
+    setEditCliCidade(cliente.cidade ?? '');
+    setEditCliEstado(cliente.estado ?? '');
+    setEditCliCnpj(cliente.cnpj ?? '');
+    setEditClientMode(true);
+  };
+
+  const handleSaveCliente = async () => {
+    if (!cliente) return;
+    try {
+      await updateCliente.mutateAsync({
+        id: cliente.id,
+        payload: {
+          nome_fantasia: editCliNome || undefined,
+          nome_contato: editCliContato || null,
+          telefone: editCliTel || null,
+          email: editCliEmail || null,
+          cidade: editCliCidade || null,
+          estado: editCliEstado || null,
+          cnpj: editCliCnpj || null,
+        },
+      });
+      toast.success('Cliente atualizado');
+      setEditClientMode(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Falha ao salvar');
     }
   };
 
@@ -221,14 +253,77 @@ export function LeadModal() {
                 {/* Cliente info */}
                 {cliente && (
                   <div>
-                    <div className="lm-section-title">Cliente</div>
-                    <div className="lm-field-grid">
-                      <LmField label="Nome Fantasia" value={cliente.nome_fantasia} />
-                      {cliente.nome_contato && <LmField label="Contato" value={cliente.nome_contato} />}
-                      {cliente.telefone && <LmField label="Telefone" value={cliente.telefone} />}
-                      {cliente.email && <LmField label="E-mail" value={cliente.email} />}
-                      {cliente.cidade && <LmField label="Cidade" value={`${cliente.cidade}${cliente.estado ? `/${cliente.estado}` : ''}`} />}
+                    <div className="lm-section-title" style={{ justifyContent: 'space-between' }}>
+                      <span>Cliente</span>
+                      {!editClientMode && (
+                        <button
+                          type="button"
+                          style={{ fontSize: '.75rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, marginLeft: 'auto' }}
+                          onClick={startClientEdit}
+                        >
+                          ✎ Editar
+                        </button>
+                      )}
                     </div>
+
+                    {editClientMode ? (
+                      <div className="lm-field-grid">
+                        <div className="lm-field wide">
+                          <span className="lm-field-label">Nome Fantasia *</span>
+                          <input value={editCliNome} onChange={(e) => setEditCliNome(e.target.value)} />
+                        </div>
+                        <div className="lm-field">
+                          <span className="lm-field-label">Contato</span>
+                          <input value={editCliContato} onChange={(e) => setEditCliContato(e.target.value)} />
+                        </div>
+                        <div className="lm-field">
+                          <span className="lm-field-label">Telefone</span>
+                          <input value={editCliTel} onChange={(e) => setEditCliTel(e.target.value)} />
+                        </div>
+                        <div className="lm-field">
+                          <span className="lm-field-label">E-mail</span>
+                          <input type="email" value={editCliEmail} onChange={(e) => setEditCliEmail(e.target.value)} />
+                        </div>
+                        <div className="lm-field">
+                          <span className="lm-field-label">Cidade</span>
+                          <input value={editCliCidade} onChange={(e) => setEditCliCidade(e.target.value)} />
+                        </div>
+                        <div className="lm-field">
+                          <span className="lm-field-label">UF</span>
+                          <input value={editCliEstado} onChange={(e) => setEditCliEstado(e.target.value)} maxLength={2} />
+                        </div>
+                        <div className="lm-field">
+                          <span className="lm-field-label">CNPJ</span>
+                          <input value={editCliCnpj} onChange={(e) => setEditCliCnpj(e.target.value)} />
+                        </div>
+                        <div style={{ gridColumn: '1/-1', display: 'flex', gap: 8 }}>
+                          <button
+                            type="button"
+                            className="lm-save-btn"
+                            disabled={updateCliente.isPending}
+                            onClick={() => void handleSaveCliente()}
+                          >
+                            {updateCliente.isPending ? 'Salvando...' : '✓ Salvar'}
+                          </button>
+                          <button
+                            type="button"
+                            style={{ padding: '7px 14px', background: 'var(--surface-2)', border: 'var(--border-w) solid var(--border)', borderRadius: 'var(--radius)', cursor: 'pointer', fontSize: '.85rem' }}
+                            onClick={() => setEditClientMode(false)}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="lm-field-grid">
+                        <LmField label="Nome Fantasia" value={cliente.nome_fantasia} />
+                        {cliente.nome_contato && <LmField label="Contato" value={cliente.nome_contato} />}
+                        {cliente.telefone && <LmField label="Telefone" value={cliente.telefone} />}
+                        {cliente.email && <LmField label="E-mail" value={cliente.email} />}
+                        {cliente.cidade && <LmField label="Cidade" value={`${cliente.cidade}${cliente.estado ? `/${cliente.estado}` : ''}`} />}
+                        {cliente.cnpj && <LmField label="CNPJ" value={cliente.cnpj} />}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -501,15 +596,6 @@ export function LeadModal() {
                         >
                           ↓ Baixar
                         </button>
-                        {lead.status !== 'perdido' && (
-                          <button
-                            type="button"
-                            className="anx-btn-delete"
-                            onClick={() => void handleDeleteAnexo(a.id)}
-                          >
-                            ✕
-                          </button>
-                        )}
                       </div>
                     </div>
                   ))}

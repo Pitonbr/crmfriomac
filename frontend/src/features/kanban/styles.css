@@ -417,6 +417,32 @@
   color: var(--text-3);
 }
 
+.kb-card-reativar {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 5px 0;
+  background: var(--warning-bg, rgba(245,158,11,.1));
+  border: 1px solid var(--warning, #f59e0b);
+  border-radius: var(--radius);
+  color: var(--warning, #f59e0b);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: var(--transition);
+}
+
+.kb-card-reativar:hover {
+  background: var(--warning, #f59e0b);
+  color: white;
+}
+
+.kb-card-reativar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .kb-loading {
   display: flex;
   align-items: center;

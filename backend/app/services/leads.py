@@ -260,3 +260,54 @@ class LeadService:
             )
         )
         return lead
+
+    async def reativar(
+        self,
+        *,
+        tenant_id: UUID,
+        lead_id: UUID,
+        autor_id: UUID,
+        autor_nome: str,
+    ) -> Lead:
+        """Reativa um lead perdido: move para Reativação e reabre para atuação."""
+        lead = await self.leads.get_by_id(lead_id)
+        if lead is None:
+            raise LeadNotFound("lead não encontrado")
+        if lead.status != LeadStatus.PERDIDO:
+            raise InvalidTransition("apenas leads perdidos podem ser reativados")
+
+        stage_reativ = await self.stages.get_by_slug("reativacao")
+        if stage_reativ is None:
+            raise InvalidTransition("stage de reativação não configurado")
+
+        now = utcnow()
+        lead.status = LeadStatus.EM_ABERTO
+        lead.stage_id = stage_reativ.id
+        lead.perdido_em = None
+        lead.motivo_perda = None
+        lead.data_ultima_movimentacao = now
+        lead.sla_deadline = now + timedelta(days=7)
+
+        await self.obs.add(
+            Observacao(
+                id=uuid4(),
+                tenant_id=tenant_id,
+                lead_id=lead.id,
+                autor_id=autor_id,
+                autor_nome=autor_nome,
+                texto="Lead reativado para nova tentativa (movido para Reativação).",
+                tipo=ObservacaoTipo.SISTEMA,
+            )
+        )
+        await self.session.flush()
+
+        await ws_manager.broadcast_tenant(
+            WsEvent(
+                type="lead.reativado",
+                tenant_id=tenant_id,
+                actor_id=autor_id,
+                actor_nome=autor_nome,
+                payload={"lead_id": str(lead.id), "stage_id": str(stage_reativ.id)},
+            )
+        )
+        return lead

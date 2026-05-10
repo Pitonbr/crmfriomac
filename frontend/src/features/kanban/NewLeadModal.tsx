@@ -1,12 +1,13 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { Dialog } from '@/components/ui/Dialog';
 import type { Stage } from '@/api/schemas';
-import { useClientes, useCreateCliente } from '@/hooks/queries/useClientes';
+import { useCreateCliente } from '@/hooks/queries/useClientes';
 import { useCreateLead } from '@/hooks/queries/useLeads';
 import { useRepresentantes } from '@/hooks/queries/useRepresentantes';
+import { addObservacao } from '@/api/leads';
 
 interface Props {
   stages: Stage[];
@@ -17,17 +18,9 @@ export function NewLeadModal({ stages, onClose }: Props) {
   const navigate = useNavigate();
   const createLead = useCreateLead();
   const createCliente = useCreateCliente();
-  const { data: clientes } = useClientes();
   const { data: reps } = useRepresentantes();
 
-  // Cliente state
-  const [clienteBusca, setClienteBusca] = useState('');
-  const [clienteId, setClienteId] = useState<string | null>(null);
-  const [clienteSelecionado, setClienteSelecionado] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [novoCliente, setNovoCliente] = useState(false);
-
-  // New client fields
+  // Novo cliente
   const [nomeFantasia, setNomeFantasia] = useState('');
   const [nomeContato, setNomeContato] = useState('');
   const [telefone, setTelefone] = useState('');
@@ -44,78 +37,44 @@ export function NewLeadModal({ stages, onClose }: Props) {
   const [formaPgto, setFormaPgto] = useState('');
   const [obsInicial, setObsInicial] = useState('');
 
-  const buscaRef = useRef<HTMLInputElement>(null);
-
-  const clientesFiltrados = (clientes ?? []).filter((c) => {
-    if (!clienteBusca.trim()) return false;
-    const q = clienteBusca.toLowerCase();
-    return (
-      c.nome_fantasia.toLowerCase().includes(q) ||
-      (c.nome_contato?.toLowerCase().includes(q) ?? false)
-    );
-  });
-
-  const selectCliente = (c: { id: string; nome_fantasia: string }) => {
-    setClienteId(c.id);
-    setClienteSelecionado(c.nome_fantasia);
-    setClienteBusca(c.nome_fantasia);
-    setShowDropdown(false);
-    setNovoCliente(false);
-  };
-
   const handleSubmit = async () => {
-    let finalClienteId = clienteId;
-
-    // Create new client if needed
-    if (novoCliente || !finalClienteId) {
-      const name = novoCliente ? nomeFantasia.trim() : clienteBusca.trim();
-      if (!name) {
-        toast.warning('Informe o nome do cliente');
-        return;
-      }
-      try {
-        const created = await createCliente.mutateAsync({
-          nome_fantasia: name,
-          nome_contato: nomeContato || undefined,
-          telefone: telefone || undefined,
-          email: email || undefined,
-          cidade: cidade || undefined,
-        });
-        finalClienteId = created.id;
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Erro ao criar cliente');
-        return;
-      }
-    }
-
-    if (!finalClienteId) {
-      toast.warning('Selecione ou crie um cliente');
+    if (!nomeFantasia.trim()) {
+      toast.warning('Informe o nome do cliente');
       return;
     }
-
     if (!stageId) {
       toast.warning('Selecione uma etapa');
       return;
     }
 
     try {
+      const cliente = await createCliente.mutateAsync({
+        nome_fantasia: nomeFantasia.trim(),
+        nome_contato: nomeContato || undefined,
+        telefone: telefone || undefined,
+        email: email || undefined,
+        cidade: cidade || undefined,
+      });
+
+      const valorNum = valor
+        ? parseFloat(valor.replace(/[^\d,.]/, '').replace(',', '.'))
+        : 0;
+
       const lead = await createLead.mutateAsync({
-        cliente_id: finalClienteId,
+        cliente_id: cliente.id,
         stage_id: stageId,
         projeto: projeto || undefined,
-        valor: valor ? parseFloat(valor.replace(/[^\d,.]/, '').replace(',', '.')) : 0,
+        valor: Number.isNaN(valorNum) ? 0 : valorNum,
         prioridade,
         representante_id: repId || undefined,
         forma_pagamento: formaPgto || undefined,
       });
 
-      // Add initial observation if provided
       if (obsInicial.trim()) {
         try {
-          const { addObservacao } = await import('@/api/leads');
           await addObservacao(lead.id, obsInicial.trim());
         } catch {
-          // Non-critical
+          // non-critical
         }
       }
 
@@ -134,98 +93,65 @@ export function NewLeadModal({ stages, onClose }: Props) {
       open
       onOpenChange={(o) => { if (!o) onClose(); }}
       title="Novo Lead"
-      description="Preencha os dados para iniciar um novo lead no funil."
+      description="Preencha os dados para cadastrar um novo cliente e iniciar o lead."
       width={560}
     >
       <div className="nl-form">
-        {/* Cliente */}
-        <div className="nl-section-label">Cliente</div>
 
-        {!novoCliente ? (
-          <div className="nl-cli-wrap nl-field">
-            <label>Buscar cliente existente</label>
+        {/* Seção: Dados do Cliente */}
+        <div className="nl-section-label">Dados do Novo Cliente</div>
+
+        <div className="nl-grid-2">
+          <div className="nl-field" style={{ gridColumn: 'span 2' }}>
+            <label>Nome Fantasia / Empresa *</label>
             <input
-              ref={buscaRef}
               type="text"
-              placeholder="Digite o nome do cliente..."
-              value={clienteBusca}
-              onChange={(e) => {
-                setClienteBusca(e.target.value);
-                setClienteId(null);
-                setClienteSelecionado('');
-                setShowDropdown(true);
-              }}
-              onFocus={() => setShowDropdown(true)}
-              onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
-              autoComplete="off"
+              placeholder="Nome da empresa ou cliente"
+              value={nomeFantasia}
+              onChange={(e) => setNomeFantasia(e.target.value)}
+              autoFocus
             />
-            {showDropdown && clientesFiltrados.length > 0 && (
-              <div className="nl-cli-results">
-                {clientesFiltrados.slice(0, 8).map((c) => (
-                  <div
-                    key={c.id}
-                    className="nl-cli-option"
-                    onMouseDown={() => selectCliente(c)}
-                  >
-                    <strong>{c.nome_fantasia}</strong>
-                    {c.nome_contato && <small>{c.nome_contato}</small>}
-                  </div>
-                ))}
-              </div>
-            )}
-            {clienteSelecionado && (
-              <small style={{ color: 'var(--success)', fontSize: '.75rem', marginTop: 2 }}>
-                ✓ {clienteSelecionado} selecionado
-              </small>
-            )}
           </div>
-        ) : (
-          <div className="nl-grid-2">
-            <div className="nl-field" style={{ gridColumn: 'span 2' }}>
-              <label>Nome Fantasia *</label>
-              <input
-                type="text"
-                placeholder="Nome da empresa ou cliente"
-                value={nomeFantasia}
-                onChange={(e) => setNomeFantasia(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <div className="nl-field">
-              <label>Nome do Contato</label>
-              <input type="text" placeholder="Responsável" value={nomeContato} onChange={(e) => setNomeContato(e.target.value)} />
-            </div>
-            <div className="nl-field">
-              <label>Telefone</label>
-              <input type="text" placeholder="(00) 00000-0000" value={telefone} onChange={(e) => setTelefone(e.target.value)} />
-            </div>
-            <div className="nl-field">
-              <label>E-mail</label>
-              <input type="email" placeholder="email@empresa.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            <div className="nl-field">
-              <label>Cidade</label>
-              <input type="text" value={cidade} onChange={(e) => setCidade(e.target.value)} />
-            </div>
+          <div className="nl-field">
+            <label>Nome do Contato</label>
+            <input
+              type="text"
+              placeholder="Responsável"
+              value={nomeContato}
+              onChange={(e) => setNomeContato(e.target.value)}
+            />
           </div>
-        )}
-
-        <button
-          type="button"
-          className="nl-new-cliente-toggle"
-          onClick={() => {
-            setNovoCliente((v) => !v);
-            setClienteId(null);
-            setClienteSelecionado('');
-            setClienteBusca('');
-          }}
-        >
-          {novoCliente ? '← Buscar cliente existente' : '+ Criar novo cliente'}
-        </button>
+          <div className="nl-field">
+            <label>Telefone</label>
+            <input
+              type="text"
+              placeholder="(00) 00000-0000"
+              value={telefone}
+              onChange={(e) => setTelefone(e.target.value)}
+            />
+          </div>
+          <div className="nl-field">
+            <label>E-mail</label>
+            <input
+              type="email"
+              placeholder="email@empresa.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="nl-field">
+            <label>Cidade</label>
+            <input
+              type="text"
+              value={cidade}
+              onChange={(e) => setCidade(e.target.value)}
+            />
+          </div>
+        </div>
 
         <div className="nl-separator" />
 
-        {/* Lead fields */}
+        {/* Seção: Dados do Lead */}
         <div className="nl-section-label">Dados do Lead</div>
 
         <div className="nl-grid-2">
@@ -275,7 +201,7 @@ export function NewLeadModal({ stages, onClose }: Props) {
           <div className="nl-field">
             <label>Representante</label>
             <select value={repId} onChange={(e) => setRepId(e.target.value)}>
-              <option value="">— Nenhum (canal próprio) —</option>
+              <option value="">— Canal próprio —</option>
               {(reps ?? []).filter((r) => r.ativo).map((r) => (
                 <option key={r.id} value={r.id}>{r.nome}</option>
               ))}

@@ -27,6 +27,7 @@ from app.services.leads import (
     StageNotFound,
 )
 
+
 router = APIRouter(prefix="/leads", tags=["leads"], dependencies=[Depends(get_current_user)])
 
 
@@ -162,6 +163,29 @@ async def concluir_lead(
             lead_id=lead_id,
             resultado=payload.resultado,
             motivo_perda=payload.motivo_perda,
+            autor_id=user.id,
+            autor_nome=user.nome,
+        )
+    except LeadNotFound as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except InvalidTransition as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
+    return LeadOut.model_validate(lead)
+
+
+# ── Reativar lead perdido ──────────────────────────────────────────
+@router.post("/{lead_id}/reativar", response_model=LeadOut)
+async def reativar_lead(
+    lead_id: UUID,
+    user: CurrentUserDep,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> LeadOut:
+    """Reativa um lead perdido, movendo-o para o stage Reativação."""
+    service = LeadService(session)
+    try:
+        lead = await service.reativar(
+            tenant_id=user.tenant_id,
+            lead_id=lead_id,
             autor_id=user.id,
             autor_nome=user.nome,
         )
