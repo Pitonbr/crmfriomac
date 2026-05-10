@@ -161,7 +161,35 @@ export function OrcamentosPage() {
           <option value="baixa">🟢 Baixa</option>
         </select>
 
-        <button className="btn-accent">Novo Orçamento</button>
+        <button
+          type="button"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '7px 18px',
+            background: 'linear-gradient(135deg, var(--primary), var(--primary-light, #3b82f6))',
+            color: 'white',
+            border: 'none',
+            borderRadius: 'var(--radius-lg)',
+            fontSize: '0.875rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(30,90,200,0.3)',
+            transition: 'all 0.18s ease',
+            whiteSpace: 'nowrap',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'
+            ;(e.currentTarget as HTMLButtonElement).style.filter = 'brightness(1.07)'
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.transform = ''
+            ;(e.currentTarget as HTMLButtonElement).style.filter = ''
+          }}
+        >
+          + Novo Orçamento
+        </button>
       </div>
 
       {/* Tabela */}
