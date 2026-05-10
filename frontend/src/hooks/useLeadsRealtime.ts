@@ -38,14 +38,19 @@ export function useLeadsRealtime(): void {
         const toStageId = evt.payload.to_stage_id as string | undefined;
         if (!leadId || !toStageId) return;
 
-        const queries = qc.getQueriesData<Lead[]>({ queryKey: LEADS_KEY });
+        const queries = qc.getQueriesData({ queryKey: LEADS_KEY });
         queries.forEach(([key, data]) => {
-          if (!data) return;
+          // Só atualiza listas de leads (arrays com stage_id)
+          if (!data || !Array.isArray(data)) return;
+          const first = data[0] as Record<string, unknown> | undefined;
+          if (first && typeof first.stage_id === 'undefined') return;
           qc.setQueryData<Lead[]>(
             key,
-            data.map((l) => (l.id === leadId ? { ...l, stage_id: toStageId } : l)),
+            (data as Lead[]).map((l) => (l.id === leadId ? { ...l, stage_id: toStageId } : l)),
           );
         });
+        // Invalida o lead individual e o pipeline de probabilidade
+        qc.invalidateQueries({ queryKey: [...LEADS_KEY, leadId] });
         return;
       }
 

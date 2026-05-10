@@ -17,7 +17,7 @@ import {
 } from '@/hooks/queries/useLeads';
 import { useStages } from '@/hooks/queries/useStages';
 import { formatBRL, formatDate, formatDateTime, formatRelative } from '@/lib/formatters';
-import { fileIconForContentType } from './KanbanCard';
+import { fileIconForContentType } from './utils';
 import { OutcomeDialog } from './OutcomeDialog';
 
 type Tab = 'info' | 'obs' | 'anexos';

@@ -67,13 +67,16 @@ export function useMoveLeadStage() {
 
     onMutate: async ({ leadId, stage_id }) => {
       await qc.cancelQueries({ queryKey: LEADS_KEY });
-      const snapshots = qc.getQueriesData<Lead[]>({ queryKey: LEADS_KEY });
+      const snapshots = qc.getQueriesData({ queryKey: LEADS_KEY });
 
       snapshots.forEach(([key, data]) => {
-        if (!data) return;
+        // Só atualiza queries que são listas de leads (arrays de objetos com .id e .stage_id)
+        if (!data || !Array.isArray(data)) return;
+        const firstItem = data[0] as Record<string, unknown> | undefined;
+        if (firstItem && typeof firstItem.stage_id === 'undefined') return; // não é Lead[]
         qc.setQueryData<Lead[]>(
           key,
-          data.map((l) => (l.id === leadId ? { ...l, stage_id } : l)),
+          (data as Lead[]).map((l) => (l.id === leadId ? { ...l, stage_id } : l)),
         );
       });
       return { snapshots };
@@ -83,7 +86,11 @@ export function useMoveLeadStage() {
       ctx?.snapshots?.forEach(([key, data]) => qc.setQueryData(key, data));
     },
 
-    onSettled: () => qc.invalidateQueries({ queryKey: LEADS_KEY }),
+    onSettled: (_data, _err, vars) => {
+      // Refetch lista de leads e lead individual para obter SLA, stage e probabilidade atualizados
+      qc.invalidateQueries({ queryKey: LEADS_KEY });
+      qc.invalidateQueries({ queryKey: [...LEADS_KEY, vars.leadId] });
+    },
   });
 }
 

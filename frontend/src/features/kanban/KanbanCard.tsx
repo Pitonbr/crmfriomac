@@ -33,16 +33,6 @@ function repInitials(nome: string): string {
   return ((first[0] ?? '') + (last[0] ?? '')).toUpperCase();
 }
 
-function fileIconForContentType(mimeOrNome: string): string {
-  if (mimeOrNome.includes('image')) return '🖼️';
-  if (mimeOrNome.includes('pdf')) return '📄';
-  if (mimeOrNome.includes('word') || mimeOrNome.includes('doc')) return '📝';
-  if (mimeOrNome.includes('excel') || mimeOrNome.includes('sheet') || mimeOrNome.includes('xls')) return '📊';
-  if (mimeOrNome.includes('zip') || mimeOrNome.includes('rar')) return '📦';
-  return '📎';
-}
-
-export { fileIconForContentType };
 
 export function KanbanCard({ lead, cliente, rep }: Props) {
   const navigate = useNavigate();
