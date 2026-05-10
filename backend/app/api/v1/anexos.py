@@ -119,6 +119,73 @@ async def download_anexo(
     )
 
 
+# ── Representante Anexos (Documentos) ─────────────────────────────────
+
+@router.get("/representante/{rep_id}", response_model=list[AnexoOut])
+async def list_anexos_representante(
+    rep_id: UUID,
+    _user: CurrentUserDep,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> list[AnexoOut]:
+    if (await RepresentanteRepository(session).get_by_id(rep_id)) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="representante não encontrado")
+    stmt = select(Anexo).where(Anexo.representante_id == rep_id).order_by(Anexo.criado_em.desc())
+    items = (await session.execute(stmt)).scalars().all()
+    return [AnexoOut.model_validate(a) for a in items]
+
+
+@router.post(
+    "/representante/{rep_id}",
+    response_model=AnexoOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_anexo_representante(
+    rep_id: UUID,
+    user: CurrentUserDep,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    file: Annotated[UploadFile, File(...)],
+) -> AnexoOut:
+    if (await RepresentanteRepository(session).get_by_id(rep_id)) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="representante não encontrado")
+
+    body = await file.read()
+    if len(body) == 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="arquivo vazio")
+    if len(body) > MAX_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"arquivo excede {MAX_BYTES} bytes",
+        )
+
+    anexo_id = uuid4()
+    storage_key = f"tenant/{user.tenant_id}/representante/{rep_id}/{anexo_id}/{file.filename}"
+
+    try:
+        await upload_object(
+            key=storage_key,
+            data=body,
+            content_type=file.content_type or "application/octet-stream",
+            length=len(body),
+        )
+    except StorageError as e:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"falha de storage: {e}") from e
+
+    anexo = Anexo(
+        id=anexo_id,
+        tenant_id=user.tenant_id,
+        representante_id=rep_id,
+        nome_arquivo=file.filename or "arquivo",
+        content_type=file.content_type or "application/octet-stream",
+        tamanho_bytes=len(body),
+        storage_key=storage_key,
+        autor_id=user.id,
+        autor_nome=user.nome,
+    )
+    session.add(anexo)
+    await session.flush()
+    return AnexoOut.model_validate(anexo)
+
+
 @router.delete("/{anexo_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_anexo(
     anexo_id: UUID,

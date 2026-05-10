@@ -1,377 +1,375 @@
-import { useState, useMemo } from 'react'
+import { useRef, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
-import {
-  useRepresentantesAll,
-  useCreateRepresentante,
-  useUpdateRepresentante,
-} from '@/hooks/queries/useRepresentantes'
+import { Dialog } from '@/components/ui/Dialog'
+import { Spinner } from '@/components/ui/Spinner'
+import { useRepresentantesAll, useCreateRepresentante, useUpdateRepresentante } from '@/hooks/queries/useRepresentantes'
 import { useLeads } from '@/hooks/queries/useLeads'
 import { useStages } from '@/hooks/queries/useStages'
 import { useClientes } from '@/hooks/queries/useClientes'
-import { Spinner } from '@/components/ui/Spinner'
-import { Dialog } from '@/components/ui/Dialog'
-import { formatBRL } from '@/lib/formatters'
-import { useAuthStore } from '@/store/authStore'
-import type { Representante, Lead, Stage, Cliente } from '@/api/schemas'
-import type { RepCreatePayload, RepUpdatePayload } from '@/api/representantes'
+import { listAnexosRep, uploadAnexoRep, type RepFullPayload } from '@/api/representantes'
+import type { Representante, Lead, Anexo } from '@/api/schemas'
+import { formatBRL, formatDate, formatRelative } from '@/lib/formatters'
+import { fileIconForContentType } from '@/features/kanban/utils'
 import '@/features/clientes/clientes.css'
-
-// ── Types ────────────────────────────────────────────────────────────────────
+import './vendedores.css'
+import { useAuthStore } from '@/store/authStore'
 
 type Tab = 'ativos' | 'canal_proprio' | 'representantes' | 'inativos'
+type FormTab = 'identificacao' | 'contato' | 'financeiro' | 'redes' | 'documentos'
 
-interface EnrichedRep extends Representante {
-  qtdOrc: number
-  totalOrc: number
-  fechados: number
-  perdidos: number
-  taxa: number
-  qtdLeadsAtivos: number
-}
-
-// ── Helper: iniciais ─────────────────────────────────────────────────────────
+const FORM_TABS: { key: FormTab; label: string }[] = [
+  { key: 'identificacao', label: '👤 Identificação' },
+  { key: 'contato',       label: '📞 Contato' },
+  { key: 'financeiro',    label: '💰 Financeiro' },
+  { key: 'redes',         label: '🌐 Redes Sociais' },
+  { key: 'documentos',    label: '📎 Documentos' },
+]
 
 function getInitials(nome: string): string {
   const parts = nome.trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'
-  const first = parts[0]?.[0] ?? ''
-  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : ''
-  return (first + last).toUpperCase()
+  return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : '')).toUpperCase()
 }
-
-// ── Ranking emoji ────────────────────────────────────────────────────────────
 
 function rankingEmoji(rank: number): string {
-  if (rank === 1) return '🥇'
-  if (rank === 2) return '🥈'
-  if (rank === 3) return '🥉'
-  return ''
+  return rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : ''
 }
 
-// ── Export leads CSV ─────────────────────────────────────────────────────────
-
-function exportLeadsCSV(
-  repNome: string,
-  leads: Lead[],
-  clientes: Map<string, Cliente>,
-  stages: Map<string, Stage>,
-) {
-  const header = ['Código', 'Cliente', 'Projeto', 'Stage', 'Valor', 'Status', 'Data Abertura']
-  const rows = leads.map((l) => [
-    l.codigo,
-    clientes.get(l.cliente_id)?.nome_fantasia ?? '—',
-    l.projeto ?? '—',
-    stages.get(l.stage_id)?.label ?? '—',
-    String(l.valor),
-    l.status,
-    l.data_abertura.slice(0, 10),
-  ])
-  const csv = [header, ...rows].map((r) => r.map((v) => `"${v}"`).join(';')).join('\n')
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `leads_${repNome.replace(/\s+/g, '_')}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1048576).toFixed(1)} MB`
 }
 
-// ── Print leads ───────────────────────────────────────────────────────────────
-
-function printLeads(
-  repNome: string,
-  leads: Lead[],
-  clientes: Map<string, Cliente>,
-  stages: Map<string, Stage>,
-) {
-  const rows = leads
-    .map(
-      (l) => `
-    <tr>
-      <td>${l.codigo}</td>
-      <td>${clientes.get(l.cliente_id)?.nome_fantasia ?? '—'}</td>
-      <td>${l.projeto ?? '—'}</td>
-      <td>${stages.get(l.stage_id)?.label ?? '—'}</td>
-      <td>R$ ${Number(l.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-      <td>${l.status}</td>
-      <td>${l.data_abertura.slice(0, 10)}</td>
-    </tr>`,
-    )
-    .join('')
-
-  const html = `
-    <html><head><title>Leads - ${repNome}</title>
-    <style>
-      body { font-family: sans-serif; font-size: 12px; }
-      h2 { margin-bottom: 12px; }
-      table { width: 100%; border-collapse: collapse; }
-      th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
-      th { background: #f0f0f0; font-weight: 700; }
-    </style></head>
-    <body>
-      <h2>Leads — ${repNome}</h2>
-      <table>
-        <thead><tr><th>Código</th><th>Cliente</th><th>Projeto</th><th>Stage</th><th>Valor</th><th>Status</th><th>Data</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </body></html>`
-
-  const w = window.open('', '_blank')
-  if (!w) return
-  w.document.write(html)
-  w.document.close()
-  w.print()
+function emptyForm(): RepFullPayload {
+  return {
+    nome: '', nome_fantasia: '', razao_social: '', cnpj: '',
+    canal: 'canal_proprio', comissao_pct: 0,
+    email: '', telefone: '', endereco: '', cep: '', cidade: '', estado: '',
+    banco: '', agencia: '', conta: '', pix: '', obs_financeiro: '',
+    instagram: '', linkedin: '', tiktok: '', website: '', outras_redes: '',
+  }
 }
 
-// ── RepFormModal ─────────────────────────────────────────────────────────────
-
-interface RepFormModalProps {
-  open: boolean
-  onClose: () => void
-  initial?: Representante | null
-  onSave: (payload: RepCreatePayload | RepUpdatePayload) => Promise<void>
-  saving: boolean
+function repToForm(r: Representante): RepFullPayload {
+  return {
+    nome: r.nome, nome_fantasia: r.nome_fantasia ?? '', razao_social: r.razao_social ?? '',
+    cnpj: r.cnpj ?? '', canal: r.canal as 'canal_proprio' | 'representante', comissao_pct: Number(r.comissao_pct),
+    email: r.email ?? '', telefone: r.telefone ?? '', endereco: r.endereco ?? '',
+    cep: r.cep ?? '', cidade: r.cidade ?? '', estado: r.estado ?? '',
+    banco: r.banco ?? '', agencia: r.agencia ?? '', conta: r.conta ?? '',
+    pix: r.pix ?? '', obs_financeiro: r.obs_financeiro ?? '',
+    instagram: r.instagram ?? '', linkedin: r.linkedin ?? '', tiktok: r.tiktok ?? '',
+    website: r.website ?? '', outras_redes: r.outras_redes ?? '',
+  }
 }
 
-function RepFormModal({ open, onClose, initial, onSave, saving }: RepFormModalProps) {
-  const [nome, setNome] = useState(initial?.nome ?? '')
-  const [canal, setCanal] = useState<'canal_proprio' | 'representante'>(
-    initial?.canal ?? 'canal_proprio',
-  )
-  const [comissao, setComissao] = useState(
-    initial?.comissao_pct != null ? String(initial.comissao_pct) : '',
-  )
-  const [telefone, setTelefone] = useState(initial?.telefone ?? '')
-  const [email, setEmail] = useState(initial?.email ?? '')
-  const [cidade, setCidade] = useState(initial?.cidade ?? '')
-  const [estado, setEstado] = useState(initial?.estado ?? '')
+function cleanPayload(form: RepFullPayload): RepFullPayload {
+  const s = (v: string | null | undefined) => v?.trim() || null
+  return {
+    ...form,
+    nome: form.nome.trim(),
+    nome_fantasia: s(form.nome_fantasia), razao_social: s(form.razao_social), cnpj: s(form.cnpj),
+    email: s(form.email), telefone: s(form.telefone), endereco: s(form.endereco),
+    cep: s(form.cep), cidade: s(form.cidade),
+    estado: s(form.estado)?.toUpperCase().slice(0, 2) ?? null,
+    banco: s(form.banco), agencia: s(form.agencia), conta: s(form.conta), pix: s(form.pix),
+    obs_financeiro: s(form.obs_financeiro),
+    instagram: s(form.instagram), linkedin: s(form.linkedin), tiktok: s(form.tiktok),
+    website: s(form.website), outras_redes: s(form.outras_redes),
+  }
+}
 
-  // Reset when initial changes
-  useMemo(() => {
-    setNome(initial?.nome ?? '')
-    setCanal(initial?.canal ?? 'canal_proprio')
-    setComissao(initial?.comissao_pct != null ? String(initial.comissao_pct) : '')
-    setTelefone(initial?.telefone ?? '')
-    setEmail(initial?.email ?? '')
-    setCidade(initial?.cidade ?? '')
-    setEstado(initial?.estado ?? '')
-  }, [initial])
+// ── RepFormModal ──────────────────────────────────────────────────────────────
+function RepFormModal({ open, onClose, initial, onSave, saving }: {
+  open: boolean; onClose: () => void; initial?: Representante | null;
+  onSave: (p: RepFullPayload) => Promise<void>; saving: boolean
+}) {
+  const [formTab, setFormTab] = useState<FormTab>('identificacao')
+  const [form, setForm] = useState<RepFullPayload>(() => initial ? repToForm(initial) : emptyForm())
+  const [anexos, setAnexos] = useState<Anexo[]>([])
+  const [loadingAnexos, setLoadingAnexos] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const isEdit = !!initial
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!nome.trim()) return
-    const payload: RepCreatePayload = {
-      nome: nome.trim(),
-      canal,
-      comissao_pct: comissao !== '' ? Number(comissao) : undefined,
-      telefone: telefone.trim() || null,
-      email: email.trim() || null,
-      cidade: cidade.trim() || null,
-      estado: estado.trim().slice(0, 2).toUpperCase() || null,
+  const handleTabChange = async (tab: FormTab) => {
+    setFormTab(tab)
+    if (tab === 'documentos' && initial?.id && anexos.length === 0 && !loadingAnexos) {
+      setLoadingAnexos(true)
+      try { setAnexos(await listAnexosRep(initial.id)) }
+      catch { toast.error('Falha ao carregar documentos') }
+      finally { setLoadingAnexos(false) }
     }
-    await onSave(payload)
+  }
+
+  const set = (field: keyof RepFullPayload) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setForm(prev => ({ ...prev, [field]: e.target.value }))
+
+  const handleUpload = async (file: File) => {
+    if (!initial?.id) { toast.warning('Salve o cadastro primeiro'); return }
+    setUploading(true)
+    try { const a = await uploadAnexoRep(initial.id, file); setAnexos(prev => [a, ...prev]); toast.success('Documento enviado') }
+    catch (err) { toast.error(err instanceof Error ? err.message : 'Erro no upload') }
+    finally { setUploading(false) }
+  }
+
+  const handleDownload = async (id: string, nome: string) => {
+    try {
+      const res = await fetch(`/api/v1/anexos/${id}/download`, { credentials: 'include' })
+      if (!res.ok) throw new Error('Falha')
+      const blob = await res.blob(); const url = URL.createObjectURL(blob)
+      const a = document.createElement('a'); a.href = url; a.download = nome; a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) { toast.error(err instanceof Error ? err.message : 'Erro') }
+  }
+
+  const handleSubmit = async () => {
+    if (!form.nome.trim()) { toast.warning('Nome obrigatório'); setFormTab('identificacao'); return }
+    await onSave(cleanPayload(form))
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => { if (!v) onClose() }}
-      title={initial ? 'Editar Vendedor' : 'Novo Vendedor'}
-      width={520}
-    >
-      <form className="rep-form" onSubmit={(e) => { void handleSubmit(e) }}>
-        <div className="rep-field">
-          <label>Nome *</label>
-          <input
-            type="text"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            required
-            maxLength={200}
-            placeholder="Nome completo"
-          />
-        </div>
-
-        <div className="rep-field">
-          <label>Canal *</label>
-          <select
-            value={canal}
-            onChange={(e) => setCanal(e.target.value as 'canal_proprio' | 'representante')}
-          >
-            <option value="canal_proprio">Canal Próprio</option>
-            <option value="representante">Representante</option>
-          </select>
-        </div>
-
-        <div className="rep-field">
-          <label>Comissão %</label>
-          <input
-            type="number"
-            min={0}
-            max={100}
-            step={0.01}
-            value={comissao}
-            onChange={(e) => setComissao(e.target.value)}
-            placeholder="0"
-          />
-        </div>
-
-        <div className="rep-field">
-          <label>Telefone</label>
-          <input
-            type="text"
-            value={telefone}
-            onChange={(e) => setTelefone(e.target.value)}
-            placeholder="(11) 99999-9999"
-          />
-        </div>
-
-        <div className="rep-field">
-          <label>E-mail</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="email@exemplo.com"
-          />
-        </div>
-
-        <div className="rep-grid-2">
-          <div className="rep-field">
-            <label>Cidade</label>
-            <input
-              type="text"
-              value={cidade}
-              onChange={(e) => setCidade(e.target.value)}
-              placeholder="Cidade"
-            />
+    <Dialog open={open} onOpenChange={o => { if (!o) onClose() }}
+      title={isEdit ? `Editar — ${initial.nome}` : 'Novo Vendedor / Representante'}
+      description="Preencha as abas com os dados do cadastro" width={640}>
+      <div className="rep-form-tabs">
+        {FORM_TABS.map(t => (
+          <button key={t.key} type="button" className={`rep-form-tab${formTab === t.key ? ' active' : ''}`}
+            onClick={() => void handleTabChange(t.key)}>{t.label}</button>
+        ))}
+      </div>
+      <div className="rep-form">
+        {formTab === 'identificacao' && (
+          <>
+            <div className="rep-grid-2">
+              <div className="rep-field" style={{ gridColumn: 'span 2' }}>
+                <label>Nome Completo *</label>
+                <input type="text" value={form.nome} onChange={set('nome')} maxLength={200} autoFocus placeholder="Nome do vendedor ou representante" />
+              </div>
+              <div className="rep-field">
+                <label>Nome Fantasia</label>
+                <input type="text" value={form.nome_fantasia ?? ''} onChange={set('nome_fantasia')} maxLength={200} />
+              </div>
+              <div className="rep-field">
+                <label>Razão Social</label>
+                <input type="text" value={form.razao_social ?? ''} onChange={set('razao_social')} maxLength={200} />
+              </div>
+              <div className="rep-field">
+                <label>CNPJ / CPF</label>
+                <input type="text" value={form.cnpj ?? ''} onChange={set('cnpj')} maxLength={20} placeholder="00.000.000/0001-00" />
+              </div>
+              <div className="rep-field">
+                <label>Tipo de Canal *</label>
+                <select value={form.canal} onChange={set('canal')}>
+                  <option value="canal_proprio">Canal Próprio (Vendedor interno)</option>
+                  <option value="representante">Representante Externo</option>
+                </select>
+              </div>
+              <div className="rep-field">
+                <label>Comissão %</label>
+                <input type="number" value={form.comissao_pct ?? 0} onChange={set('comissao_pct')} min={0} max={100} step={0.01} />
+              </div>
+            </div>
+            <div className="rep-hint">
+              <strong>Canal Próprio:</strong> vendedor interno da equipe Friomac.<br />
+              <strong>Representante:</strong> parceiro externo que indica clientes.
+            </div>
+          </>
+        )}
+        {formTab === 'contato' && (
+          <div className="rep-grid-2">
+            <div className="rep-field">
+              <label>E-mail</label>
+              <input type="email" value={form.email ?? ''} onChange={set('email')} placeholder="vendedor@email.com" />
+            </div>
+            <div className="rep-field">
+              <label>Telefone / WhatsApp</label>
+              <input type="text" value={form.telefone ?? ''} onChange={set('telefone')} placeholder="(11) 99999-9999" maxLength={40} />
+            </div>
+            <div className="rep-field" style={{ gridColumn: 'span 2' }}>
+              <label>Endereço</label>
+              <input type="text" value={form.endereco ?? ''} onChange={set('endereco')} maxLength={255} placeholder="Rua, número, complemento" />
+            </div>
+            <div className="rep-field">
+              <label>CEP</label>
+              <input type="text" value={form.cep ?? ''} onChange={set('cep')} maxLength={10} placeholder="00000-000" />
+            </div>
+            <div className="rep-field">
+              <label>Cidade</label>
+              <input type="text" value={form.cidade ?? ''} onChange={set('cidade')} maxLength={100} />
+            </div>
+            <div className="rep-field">
+              <label>Estado (UF)</label>
+              <input type="text" value={form.estado ?? ''} onChange={set('estado')} maxLength={2} placeholder="SP" />
+            </div>
           </div>
-          <div className="rep-field">
-            <label>Estado</label>
-            <input
-              type="text"
-              value={estado}
-              onChange={(e) => setEstado(e.target.value.slice(0, 2))}
-              placeholder="SP"
-              maxLength={2}
-            />
+        )}
+        {formTab === 'financeiro' && (
+          <div className="rep-grid-2">
+            <div className="rep-field">
+              <label>Banco</label>
+              <input type="text" value={form.banco ?? ''} onChange={set('banco')} maxLength={100} placeholder="Ex: Itaú, Bradesco, Nubank" />
+            </div>
+            <div className="rep-field">
+              <label>Agência</label>
+              <input type="text" value={form.agencia ?? ''} onChange={set('agencia')} maxLength={20} placeholder="0000" />
+            </div>
+            <div className="rep-field">
+              <label>Conta Corrente</label>
+              <input type="text" value={form.conta ?? ''} onChange={set('conta')} maxLength={30} placeholder="00000-0" />
+            </div>
+            <div className="rep-field">
+              <label>Chave PIX</label>
+              <input type="text" value={form.pix ?? ''} onChange={set('pix')} maxLength={100} placeholder="CPF, CNPJ, e-mail ou celular" />
+            </div>
+            <div className="rep-field" style={{ gridColumn: 'span 2' }}>
+              <label>Observações Financeiras</label>
+              <textarea value={form.obs_financeiro ?? ''} onChange={set('obs_financeiro')} rows={3} placeholder="Condições de pagamento, preferências..." />
+            </div>
           </div>
-        </div>
-
-        <div className="rep-submit-row">
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={onClose}
-            disabled={saving}
-          >
-            Cancelar
-          </button>
-          <button type="submit" className="btn-primary" disabled={saving || !nome.trim()}>
-            {saving ? 'Salvando...' : 'Salvar'}
-          </button>
-        </div>
-      </form>
+        )}
+        {formTab === 'redes' && (
+          <div className="rep-grid-2">
+            <div className="rep-field">
+              <label>Instagram</label>
+              <input type="text" value={form.instagram ?? ''} onChange={set('instagram')} maxLength={100} placeholder="@usuario" />
+            </div>
+            <div className="rep-field">
+              <label>LinkedIn</label>
+              <input type="text" value={form.linkedin ?? ''} onChange={set('linkedin')} maxLength={200} placeholder="linkedin.com/in/..." />
+            </div>
+            <div className="rep-field">
+              <label>TikTok</label>
+              <input type="text" value={form.tiktok ?? ''} onChange={set('tiktok')} maxLength={100} placeholder="@usuario" />
+            </div>
+            <div className="rep-field">
+              <label>Website</label>
+              <input type="url" value={form.website ?? ''} onChange={set('website')} maxLength={200} placeholder="https://..." />
+            </div>
+            <div className="rep-field" style={{ gridColumn: 'span 2' }}>
+              <label>Outras Redes / Links</label>
+              <input type="text" value={form.outras_redes ?? ''} onChange={set('outras_redes')} maxLength={200} placeholder="YouTube, Facebook, etc." />
+            </div>
+          </div>
+        )}
+        {formTab === 'documentos' && (
+          !isEdit ? (
+            <div className="rep-docs-notice">💡 Salve o cadastro primeiro para poder anexar documentos.</div>
+          ) : (
+            <>
+              <div className="rep-docs-cats">
+                <p className="rep-docs-label">Documentos necessários:</p>
+                <div className="rep-docs-chips">
+                  {['Contrato Social','Comprv. Endereço','Cartão CNPJ','Comprv. Bancário','Documento com Foto','Contrato de Representação'].map(d => (
+                    <span key={d} className="rep-doc-chip">{d}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="anx-upload-area" style={{ marginBottom: 12 }}
+                onClick={() => fileRef.current?.click()}
+                onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('drag-over') }}
+                onDragLeave={e => e.currentTarget.classList.remove('drag-over')}
+                onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('drag-over'); const f = e.dataTransfer.files[0]; if (f) void handleUpload(f) }}>
+                <input ref={fileRef} type="file" style={{ display:'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) void handleUpload(f); e.target.value = '' }} />
+                <div className="anx-upload-icon">{uploading ? '⏳' : '📎'}</div>
+                <div className="anx-upload-label">{uploading ? 'Enviando...' : 'Clique ou arraste um documento'}</div>
+                <div className="anx-upload-hint">PDF, imagens, Word — máx. 25 MB</div>
+              </div>
+              {loadingAnexos ? <div style={{ textAlign:'center', padding:20 }}><Spinner /></div> : (
+                <div className="anx-list">
+                  {anexos.length === 0 && <p style={{ color:'var(--text-3)', fontSize:'.85rem' }}>Nenhum documento enviado.</p>}
+                  {anexos.map(a => (
+                    <div key={a.id} className="anx-item">
+                      <span className="anx-icon">{fileIconForContentType(a.content_type)}</span>
+                      <div className="anx-info">
+                        <div className="anx-name">{a.nome_arquivo}</div>
+                        <div className="anx-meta">{formatBytes(a.tamanho_bytes)} · {a.autor_nome} · {formatDate(a.criado_em)}</div>
+                      </div>
+                      <div className="anx-actions">
+                        <button type="button" className="anx-btn-download" onClick={() => void handleDownload(a.id, a.nome_arquivo)}>↓ Baixar</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )
+        )}
+        {formTab !== 'documentos' ? (
+          <div className="rep-submit-row">
+            <button type="button" className="rep-btn-cancel" onClick={onClose}>Cancelar</button>
+            <button type="button" className="rep-btn-save" disabled={saving} onClick={() => void handleSubmit()}>
+              {saving ? 'Salvando...' : isEdit ? '✓ Salvar Alterações' : '+ Criar Cadastro'}
+            </button>
+          </div>
+        ) : (
+          <div className="rep-submit-row">
+            <button type="button" className="rep-btn-cancel" onClick={onClose}>Fechar</button>
+          </div>
+        )}
+      </div>
     </Dialog>
   )
 }
 
 // ── RepLeadsModal ─────────────────────────────────────────────────────────────
-
-interface RepLeadsModalProps {
-  open: boolean
-  onClose: () => void
-  rep: EnrichedRep | null
-  leads: Lead[]
-  clientesMap: Map<string, Cliente>
-  stagesMap: Map<string, Stage>
-}
-
-function RepLeadsModal({
-  open,
-  onClose,
-  rep,
-  leads,
-  clientesMap,
-  stagesMap,
-}: RepLeadsModalProps) {
+function RepLeadsModal({ rep, leads, open, onClose }: { rep: Representante; leads: Lead[]; open: boolean; onClose: () => void }) {
   const navigate = useNavigate()
+  const { data: stages = [] } = useStages()
+  const { data: clientes = [] } = useClientes()
+  const stagesMap = useMemo(() => new Map(stages.map(s => [s.id, s])), [stages])
+  const clientesMap = useMemo(() => new Map(clientes.map(c => [c.id, c])), [clientes])
 
-  if (!rep) return null
+  const STATUS_LABEL: Record<string, string> = { em_aberto: 'Em aberto', ganho: '🏆 Ganho', perdido: '❌ Perdido', em_producao: 'Produção' }
+  const STATUS_COLOR: Record<string, string> = { em_aberto: 'var(--primary)', ganho: 'var(--success)', perdido: 'var(--danger)', em_producao: 'var(--info)' }
 
-  const repLeads = leads.filter((l) => l.representante_id === rep.id)
+  const exportCSV = () => {
+    const h = ['Código','Cliente','Projeto','Stage','Valor','Status','Data']
+    const rows = leads.map(l => [l.codigo, clientesMap.get(l.cliente_id)?.nome_fantasia ?? '—', l.projeto ?? '—', stagesMap.get(l.stage_id)?.label ?? '—', String(l.valor), l.status, l.data_abertura.slice(0,10)])
+    const csv = [h,...rows].map(r => r.map(v => `"${v}"`).join(';')).join('\n')
+    const blob = new Blob(['﻿'+csv], { type:'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = `leads_${rep.nome.replace(/\s+/g,'_')}.csv`; a.click()
+    URL.revokeObjectURL(url)
+  }
 
-  const statusLabel: Record<string, string> = {
-    em_aberto: 'Em Aberto',
-    ganho: 'Ganho',
-    perdido: 'Perdido',
-    em_producao: 'Em Produção',
+  const printLeads = () => {
+    const rows = leads.map(l => `<tr><td>${l.codigo}</td><td>${clientesMap.get(l.cliente_id)?.nome_fantasia ?? '—'}</td><td>${l.projeto ?? '—'}</td><td>${stagesMap.get(l.stage_id)?.label ?? '—'}</td><td>R$ ${Number(l.valor).toFixed(2)}</td><td>${STATUS_LABEL[l.status] ?? l.status}</td></tr>`).join('')
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"/><title>Leads — ${rep.nome}</title><style>body{font-family:Arial,sans-serif;font-size:11px}table{border-collapse:collapse;width:100%}th{background:#f4f4f4;padding:6px 8px;text-align:left;border:1px solid #ddd;font-size:10px;text-transform:uppercase}td{padding:5px 8px;border:1px solid #eee}tr:nth-child(even){background:#fafafa}@media print{@page{margin:1cm}}</style></head><body><h2>Leads — ${rep.nome}</h2><p>${leads.length} registros · ${new Date().toLocaleDateString('pt-BR')}</p><table><thead><tr><th>Código</th><th>Cliente</th><th>Projeto</th><th>Stage</th><th>Valor</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></body></html>`
+    const w = window.open('','_blank','width=900,height=700'); if (!w) return
+    w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 300)
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => { if (!v) onClose() }}
-      title={`Leads — ${rep.nome}`}
-      width={680}
-    >
+    <Dialog open={open} onOpenChange={o => { if (!o) onClose() }} title={`Leads — ${rep.nome}`} description={`${leads.length} lead${leads.length !== 1 ? 's' : ''}`} width={760}>
       <div className="rep-leads-toolbar">
-        <span className="rep-leads-count">{repLeads.length} lead{repLeads.length !== 1 ? 's' : ''}</span>
-        <button
-          className="rep-export-btn"
-          onClick={() => exportLeadsCSV(rep.nome, repLeads, clientesMap, stagesMap)}
-        >
-          CSV
-        </button>
-        <button
-          className="rep-export-btn"
-          onClick={() => printLeads(rep.nome, repLeads, clientesMap, stagesMap)}
-        >
-          Imprimir
-        </button>
+        <span className="rep-leads-count">
+          {leads.filter(l => l.status === 'em_aberto').length} em aberto · {leads.filter(l => l.status === 'ganho').length} ganhos · {formatBRL(leads.filter(l => l.status === 'em_aberto').reduce((s,l) => s + l.valor, 0))} em pipeline
+        </span>
+        <button type="button" className="rep-export-btn" onClick={exportCSV}>📊 CSV</button>
+        <button type="button" className="rep-export-btn" onClick={printLeads}>🖨️ Imprimir</button>
       </div>
-
-      {repLeads.length === 0 ? (
-        <p style={{ color: 'var(--text-3)', textAlign: 'center', padding: '24px 0' }}>
-          Nenhum lead encontrado.
-        </p>
+      {leads.length === 0 ? (
+        <p style={{ color:'var(--text-3)', textAlign:'center', padding:24 }}>Nenhum lead associado.</p>
       ) : (
         <div className="rep-leads-list">
-          {repLeads.map((lead) => {
+          {[...leads].sort((a,b) => new Date(b.data_abertura).getTime() - new Date(a.data_abertura).getTime()).map(lead => {
             const stage = stagesMap.get(lead.stage_id)
-            const cliente = clientesMap.get(lead.cliente_id)
+            const cli = clientesMap.get(lead.cliente_id)
             return (
-              <button
-                key={lead.id}
-                className="rep-lead-row"
-                onClick={() => {
-                  navigate(`/clientes/${lead.cliente_id}`)
-                  onClose()
-                }}
-              >
-                <span className="cli-lead-codigo">{lead.codigo}</span>
-                <div className="cli-lead-info">
-                  <div className="cli-lead-projeto">
-                    {cliente?.nome_fantasia ?? '—'}
-                    {lead.projeto ? ` — ${lead.projeto}` : ''}
-                  </div>
-                  <div className="cli-lead-date">{lead.data_abertura.slice(0, 10)}</div>
+              <button key={lead.id} type="button" className="rep-lead-row" onClick={() => { onClose(); navigate(`/clientes/${lead.cliente_id}`) }}>
+                <span style={{ fontSize:'.72rem', color:'var(--text-3)', fontWeight:700, minWidth:50 }}>#{lead.codigo}</span>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:'.88rem', fontWeight:700, color:'var(--text-1)' }}>{cli?.nome_fantasia ?? '—'}</div>
+                  <div style={{ fontSize:'.72rem', color:'var(--text-3)' }}>{lead.projeto ?? '—'} · {formatRelative(lead.data_abertura)}</div>
                 </div>
-                {stage && (
-                  <span
-                    className="cli-lead-stage"
-                    style={{ borderColor: stage.cor, color: stage.cor }}
-                  >
-                    {stage.label}
-                  </span>
-                )}
-                <span className="cli-lead-valor">{formatBRL(lead.valor)}</span>
-                <span className="cli-lead-status" style={{ color: 'var(--text-2)' }}>
-                  {statusLabel[lead.status] ?? lead.status}
-                </span>
-                <span className="cli-lead-arrow">›</span>
+                {stage && <span style={{ fontSize:'.72rem', fontWeight:700, padding:'2px 8px', borderRadius:999, border:`1px solid ${stage.cor}`, color:stage.cor, whiteSpace:'nowrap' }}>{stage.label}</span>}
+                <span style={{ fontSize:'.88rem', fontWeight:800, color:'var(--success)', whiteSpace:'nowrap' }}>{formatBRL(lead.valor)}</span>
+                <span style={{ fontSize:'.75rem', fontWeight:700, color: STATUS_COLOR[lead.status] ?? 'var(--text-2)', whiteSpace:'nowrap' }}>{STATUS_LABEL[lead.status] ?? lead.status}</span>
+                <span style={{ color:'var(--text-3)' }}>→</span>
               </button>
             )
           })}
@@ -381,468 +379,150 @@ function RepLeadsModal({
   )
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
-
+// ── Main ──────────────────────────────────────────────────────────────────────
 export function VendedoresPage() {
   const [activeTab, setActiveTab] = useState<Tab>('ativos')
-  const [formOpen, setFormOpen] = useState(false)
+  const [showForm, setShowForm] = useState(false)
   const [editRep, setEditRep] = useState<Representante | null>(null)
-  const [leadsModalRep, setLeadsModalRep] = useState<EnrichedRep | null>(null)
+  const [leadsRep, setLeadsRep] = useState<Representante | null>(null)
 
-  const { data: reps = [], isPending: repsPending, isError: repsError } = useRepresentantesAll()
-  const { data: leads = [], isPending: leadsPending, isError: leadsError } = useLeads()
-  const { data: stages = [] } = useStages()
-  const { data: clientes = [] } = useClientes()
-  const user = useAuthStore((s) => s.user)
+  const { data: reps = [], isPending: repsPending } = useRepresentantesAll()
+  const { data: leads = [], isPending: leadsPending } = useLeads()
+  const createRep = useCreateRepresentante()
+  const updateRep = useUpdateRepresentante()
+  const user = useAuthStore(s => s.user)
   const isAdmin = user?.role === 'master'
 
-  const createMutation = useCreateRepresentante()
-  const updateMutation = useUpdateRepresentante()
-
-  const navigate = useNavigate()
-
-  const isPending = repsPending || leadsPending
-  const isError = repsError || leadsError
-
-  // Maps for fast lookups
-  const stagesMap = useMemo(() => {
-    const m = new Map<string, Stage>()
-    stages.forEach((s) => m.set(s.id, s))
-    return m
-  }, [stages])
-
-  const clientesMap = useMemo(() => {
-    const m = new Map<string, Cliente>()
-    clientes.forEach((c) => m.set(c.id, c))
-    return m
-  }, [clientes])
-
-  // ── Enrich reps with lead stats ──────────────────────────────────────────
-
-  const enriched = useMemo<EnrichedRep[]>(() => {
-    return reps.map((rep) => {
-      const repLeads = leads.filter((l) => l.representante_id === rep.id)
-      const qtdOrc = repLeads.filter((l) => l.status === 'em_aberto').length
-      const totalOrc = repLeads.reduce((s, l) => s + Number(l.valor), 0)
-      const fechados = repLeads.filter((l) => l.status === 'ganho').length
-      const perdidos = repLeads.filter((l) => l.status === 'perdido').length
-      const taxa = fechados + perdidos > 0 ? (fechados / (fechados + perdidos)) * 100 : 0
-      const qtdLeadsAtivos = repLeads.filter((l) => l.status === 'em_aberto').length
-      return { ...rep, qtdOrc, totalOrc, fechados, perdidos, taxa, qtdLeadsAtivos }
-    })
-  }, [reps, leads])
-
-  // ── Rankings by totalOrc (ativos apenas) ────────────────────────────────
+  const enriched = useMemo(() => reps.map(rep => {
+    const repLeads = leads.filter(l => l.representante_id === rep.id)
+    const qtdLeadsAtivos = repLeads.filter(l => l.status === 'em_aberto').length
+    const totalOrc = repLeads.reduce((s, l) => s + Number(l.valor), 0)
+    const fechados = repLeads.filter(l => l.status === 'ganho').length
+    const perdidos = repLeads.filter(l => l.status === 'perdido').length
+    const taxa = (fechados + perdidos) > 0 ? (fechados / (fechados + perdidos)) * 100 : 0
+    return { ...rep, qtdLeadsAtivos, totalOrc, fechados, perdidos, taxa, allLeads: repLeads }
+  }), [reps, leads])
 
   const rankingMap = useMemo(() => {
-    const ativos = enriched.filter((r) => r.ativo)
-    const sorted = [...ativos].sort((a, b) => b.totalOrc - a.totalOrc)
-    const map = new Map<string, number>()
-    sorted.forEach((r, i) => map.set(r.id, i + 1))
-    return map
+    const sorted = [...enriched.filter(r => r.ativo)].sort((a,b) => b.totalOrc - a.totalOrc)
+    return new Map(sorted.map((r,i) => [r.id, i+1]))
   }, [enriched])
 
-  // ── Counts for tabs ──────────────────────────────────────────────────────
-
-  const cntAtivos = enriched.filter((r) => r.ativo).length
-  const cntCanalProprio = enriched.filter((r) => r.ativo && r.canal === 'canal_proprio').length
-  const cntRepresentantes = enriched.filter((r) => r.ativo && r.canal === 'representante').length
-  const cntInativos = enriched.filter((r) => !r.ativo).length
-
-  // ── Filter by tab ────────────────────────────────────────────────────────
-
   const filtered = useMemo(() => {
-    if (activeTab === 'ativos') return enriched.filter((r) => r.ativo)
-    if (activeTab === 'canal_proprio')
-      return enriched.filter((r) => r.ativo && r.canal === 'canal_proprio')
-    if (activeTab === 'representantes')
-      return enriched.filter((r) => r.ativo && r.canal === 'representante')
-    if (activeTab === 'inativos') return enriched.filter((r) => !r.ativo)
-    return enriched
+    if (activeTab === 'ativos') return enriched.filter(r => r.ativo)
+    if (activeTab === 'canal_proprio') return enriched.filter(r => r.ativo && r.canal === 'canal_proprio')
+    if (activeTab === 'representantes') return enriched.filter(r => r.ativo && r.canal === 'representante')
+    return enriched.filter(r => !r.ativo)
   }, [enriched, activeTab])
 
-  // ── Filtered stats ───────────────────────────────────────────────────────
+  const filteredStats = useMemo(() => ({
+    count: filtered.length,
+    leadsAtivos: filtered.reduce((s,r) => s + r.qtdLeadsAtivos, 0),
+    fechados: filtered.reduce((s,r) => s + r.fechados, 0),
+    totalOrc: filtered.reduce((s,r) => s + r.totalOrc, 0),
+  }), [filtered])
 
-  const filteredStats = useMemo(
-    () => ({
-      count: filtered.length,
-      leadsAtivos: filtered.reduce((s, r) => s + r.qtdLeadsAtivos, 0),
-      fechados: filtered.reduce((s, r) => s + r.fechados, 0),
-      totalOrc: filtered.reduce((s, r) => s + r.totalOrc, 0),
-    }),
-    [filtered],
-  )
+  const counts = useMemo(() => ({
+    ativos: enriched.filter(r => r.ativo).length,
+    canal: enriched.filter(r => r.ativo && r.canal === 'canal_proprio').length,
+    reps: enriched.filter(r => r.ativo && r.canal === 'representante').length,
+    inativos: enriched.filter(r => !r.ativo).length,
+  }), [enriched])
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
-
-  function openNew() {
-    setEditRep(null)
-    setFormOpen(true)
+  const handleSave = async (payload: RepFullPayload) => {
+    try {
+      if (editRep) { await updateRep.mutateAsync({ id: editRep.id, payload }); toast.success('Cadastro atualizado!') }
+      else { await createRep.mutateAsync(payload); toast.success('Vendedor cadastrado!') }
+      setShowForm(false); setEditRep(null)
+    } catch (err) { toast.error(err instanceof Error ? err.message : 'Falha ao salvar') }
   }
 
-  function openEdit(rep: Representante) {
-    setEditRep(rep)
-    setFormOpen(true)
+  const handleInativar = async (rep: Representante) => {
+    if (!confirm(`Inativar "${rep.nome}"?\nEle não aparecerá nos dropdowns de lead.`)) return
+    try { await updateRep.mutateAsync({ id: rep.id, payload: { ativo: false } }); toast.success(`${rep.nome} inativado`) }
+    catch (err) { toast.error(err instanceof Error ? err.message : 'Falha') }
   }
 
-  async function handleSave(payload: RepCreatePayload | RepUpdatePayload) {
-    if (editRep) {
-      await updateMutation.mutateAsync({ id: editRep.id, payload: payload as RepUpdatePayload })
-      toast.success('Vendedor atualizado com sucesso.')
-    } else {
-      await createMutation.mutateAsync(payload as RepCreatePayload)
-      toast.success('Vendedor criado com sucesso.')
-    }
-    setFormOpen(false)
-    setEditRep(null)
+  const handleReativar = async (rep: Representante) => {
+    try { await updateRep.mutateAsync({ id: rep.id, payload: { ativo: true } }); toast.success(`${rep.nome} reativado`) }
+    catch (err) { toast.error(err instanceof Error ? err.message : 'Falha') }
   }
 
-  async function handleInativar(rep: Representante) {
-    if (!confirm(`Inativar "${rep.nome}"?`)) return
-    await updateMutation.mutateAsync({ id: rep.id, payload: { ativo: false } })
-    toast.success(`${rep.nome} inativado.`)
-  }
-
-  async function handleReativar(rep: Representante) {
-    await updateMutation.mutateAsync({ id: rep.id, payload: { ativo: true } })
-    toast.success(`${rep.nome} reativado.`)
-  }
-
-  // ── Loading / Error states ───────────────────────────────────────────────
-
-  if (isPending) {
-    return (
-      <div style={{ padding: 60, display: 'flex', justifyContent: 'center' }}>
-        <Spinner label="Carregando vendedores e representantes..." />
-      </div>
-    )
-  }
-
-  if (isError) {
-    return (
-      <div className="empty-state" style={{ padding: 40 }}>
-        <p style={{ color: 'var(--danger)' }}>Erro ao carregar.</p>
-      </div>
-    )
-  }
-
-  const isSaving = createMutation.isPending || updateMutation.isPending
-
-  // ── Render ───────────────────────────────────────────────────────────────
+  if (repsPending || leadsPending) return <div style={{ padding:60, display:'flex', justifyContent:'center' }}><Spinner label="Carregando..." /></div>
 
   return (
     <div className="page-padded">
-      {/* ── Stats Row ─────────────────────────────────────────────────── */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 12,
-          marginBottom: 20,
-        }}
-      >
-        <StatMini value={filteredStats.count} label="Vendedores" />
-        <StatMini value={filteredStats.leadsAtivos} label="Leads Ativos" />
-        <StatMini value={filteredStats.fechados} label="Fechados" />
-        <StatMini value={formatBRL(filteredStats.totalOrc)} label="Total Orçado" />
+      <div className="vend-stats-row">
+        <StatCard value={filteredStats.count} label="Vendedores" icon="👤" />
+        <StatCard value={filteredStats.leadsAtivos} label="Leads Ativos" icon="🔄" />
+        <StatCard value={filteredStats.fechados} label="Fechamentos" icon="🏆" />
+        <StatCard value={formatBRL(filteredStats.totalOrc)} label="Total Orçado" icon="💰" />
       </div>
 
-      {/* ── Toolbar ───────────────────────────────────────────────────── */}
-      <div className="page-toolbar" style={{ gap: 8 }}>
-        <div style={{ display: 'flex', gap: 4, flex: 1, flexWrap: 'wrap' }}>
-          <TabButton active={activeTab === 'ativos'} onClick={() => setActiveTab('ativos')}>
-            Todos Ativos ({cntAtivos})
-          </TabButton>
-          <TabButton
-            active={activeTab === 'canal_proprio'}
-            onClick={() => setActiveTab('canal_proprio')}
-          >
-            Canal Próprio ({cntCanalProprio})
-          </TabButton>
-          <TabButton
-            active={activeTab === 'representantes'}
-            onClick={() => setActiveTab('representantes')}
-          >
-            Representantes ({cntRepresentantes})
-          </TabButton>
-          <TabButton active={activeTab === 'inativos'} onClick={() => setActiveTab('inativos')}>
-            Inativos ({cntInativos})
-          </TabButton>
+      <div className="vend-toolbar">
+        <div className="vend-tabs">
+          <TabBtn active={activeTab==='ativos'} onClick={() => setActiveTab('ativos')}>Todos Ativos ({counts.ativos})</TabBtn>
+          <TabBtn active={activeTab==='canal_proprio'} onClick={() => setActiveTab('canal_proprio')}>Canal Próprio ({counts.canal})</TabBtn>
+          <TabBtn active={activeTab==='representantes'} onClick={() => setActiveTab('representantes')}>Representantes ({counts.reps})</TabBtn>
+          <TabBtn active={activeTab==='inativos'} onClick={() => setActiveTab('inativos')}>Inativos ({counts.inativos})</TabBtn>
         </div>
-
         {isAdmin && (
-          <button className="btn-primary" onClick={openNew}>
-            + Novo Vendedor
+          <button type="button" className="vend-novo-btn" onClick={() => { setEditRep(null); setShowForm(true) }}>
+            <span className="vend-novo-icon">+</span>Novo Vendedor
           </button>
         )}
       </div>
 
-      {/* ── Rep Cards Grid ────────────────────────────────────────────── */}
       {filtered.length === 0 ? (
-        <div className="empty-state" style={{ padding: 40, textAlign: 'center' }}>
-          <p style={{ color: 'var(--text-3)' }}>Nenhum resultado nesta categoria.</p>
-        </div>
+        <div style={{ padding:40, textAlign:'center', color:'var(--text-3)' }}>Nenhum resultado.</div>
       ) : (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: 16,
-          }}
-        >
-          {filtered.map((rep) => {
+        <div className="vend-grid">
+          {filtered.map(rep => {
             const rank = rankingMap.get(rep.id)
-            const emoji = rank ? rankingEmoji(rank) : ''
             const inativo = !rep.ativo
-
             return (
-              <div
-                key={rep.id}
-                style={{
-                  background: inativo ? 'var(--surface-2)' : 'var(--surface)',
-                  border: inativo
-                    ? '1.5px dashed var(--border-2)'
-                    : '1.5px solid var(--border)',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: 20,
-                  opacity: inativo ? 0.55 : 1,
-                  boxShadow: inativo ? 'none' : 'var(--shadow-sm)',
-                  transition: 'box-shadow .18s ease',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 0,
-                }}
-              >
-                {/* ── Card Header ──────────────────────────────────── */}
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 14,
-                    alignItems: 'flex-start',
-                    marginBottom: 16,
-                  }}
-                >
-                  {/* Avatar */}
-                  <div
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: '50%',
-                      background: inativo
-                        ? 'var(--border-2)'
-                        : 'linear-gradient(135deg, var(--primary), var(--primary-light))',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'var(--text-inv)',
-                      fontWeight: 800,
-                      fontSize: '1rem',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {getInitials(rep.nome)}
-                  </div>
-
-                  {/* Nome + badge + ranking */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        flexWrap: 'wrap',
-                        marginBottom: 4,
-                      }}
-                    >
-                      <strong
-                        style={{
-                          fontSize: '0.95rem',
-                          fontWeight: 700,
-                          color: 'var(--text-1)',
-                          lineHeight: 1.3,
-                        }}
-                      >
-                        {rep.nome}
-                      </strong>
-                      {inativo && (
-                        <span
-                          style={{
-                            background: 'var(--danger-bg)',
-                            color: 'var(--danger)',
-                            fontSize: '0.65rem',
-                            fontWeight: 700,
-                            padding: '1px 7px',
-                            borderRadius: 999,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.04em',
-                          }}
-                        >
-                          Inativo
-                        </span>
-                      )}
+              <div key={rep.id} className={`vend-card${inativo ? ' inativo' : ''}`}>
+                <div className="vend-card-header">
+                  <div className={`vend-avatar${inativo ? ' inativo' : ''}`}>{getInitials(rep.nome)}</div>
+                  <div className="vend-card-info">
+                    <div className="vend-card-name-row">
+                      <strong className="vend-card-name">{rep.nome}</strong>
+                      {inativo && <span className="vend-tag-inativo">Inativo</span>}
+                      {rank && <span title={`${rank}º lugar`} style={{ fontSize:'1.1rem' }}>{rankingEmoji(rank)}</span>}
                     </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span
-                        className={`badge ${rep.canal === 'canal_proprio' ? 'badge-primary' : 'badge-purple'}`}
-                        style={
-                          rep.canal === 'canal_proprio'
-                            ? {
-                                background: 'var(--primary)',
-                                color: '#fff',
-                                padding: '2px 10px',
-                                borderRadius: 999,
-                                fontSize: '0.7rem',
-                                fontWeight: 600,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.04em',
-                              }
-                            : undefined
-                        }
-                      >
+                    <div className="vend-card-meta-row">
+                      <span className={`vend-canal-badge ${rep.canal}`}>
                         {rep.canal === 'canal_proprio' ? 'Canal Próprio' : 'Representante'}
                       </span>
-
-                      {emoji && (
-                        <span style={{ fontSize: '1.1rem' }} title={`${rank ?? ''}º lugar`}>
-                          {emoji}
-                        </span>
-                      )}
+                      {rep.cidade && <span className="vend-card-cidade">📍 {rep.cidade}{rep.estado ? `/${rep.estado}` : ''}</span>}
                     </div>
                   </div>
                 </div>
-
-                {/* ── Stats Grid 2x2 ───────────────────────────────── */}
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: 10,
-                    marginBottom: 14,
-                  }}
-                >
-                  <RepStat label="Orçamentos" value={rep.qtdOrc} />
+                <div className="vend-stats-grid">
+                  <RepStat label="Leads Ativos" value={rep.qtdLeadsAtivos} />
                   <RepStat label="Fechados" value={rep.fechados} />
-                  <RepStat label="Total orçado" value={formatBRL(rep.totalOrc)} />
-                  <RepStat
-                    label="Conversão"
-                    value={rep.taxa > 0 ? `${rep.taxa.toFixed(1)}%` : '—'}
-                  />
+                  <RepStat label="Total Orçado" value={formatBRL(rep.totalOrc)} />
+                  <RepStat label="Conversão" value={rep.taxa > 0 ? `${rep.taxa.toFixed(1)}%` : '—'} />
                 </div>
-
-                {/* ── Contato ──────────────────────────────────────── */}
                 {(rep.telefone || rep.email) && (
-                  <div
-                    style={{
-                      fontSize: '0.78rem',
-                      color: 'var(--text-2)',
-                      marginBottom: 14,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 3,
-                    }}
-                  >
+                  <div className="vend-contato">
                     {rep.telefone && <span>📞 {rep.telefone}</span>}
                     {rep.email && <span>✉ {rep.email}</span>}
                   </div>
                 )}
-
-                {/* ── Footer ───────────────────────────────────────── */}
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 8,
-                    paddingTop: 12,
-                    borderTop: '1px solid var(--border)',
-                    marginTop: 'auto',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      flexWrap: 'wrap',
-                      gap: 6,
-                    }}
-                  >
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-3)', fontWeight: 600 }}>
-                      Comissão: {rep.comissao_pct}%
-                    </span>
-
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      {isAdmin && (
-                        <button
-                          style={{
-                            fontSize: '0.75rem',
-                            padding: '4px 10px',
-                            borderRadius: 'var(--radius)',
-                            border: '1.5px solid var(--border-2)',
-                            background: 'var(--surface)',
-                            color: 'var(--text-2)',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                          }}
-                          onClick={() => openEdit(rep)}
-                        >
-                          Editar
-                        </button>
-                      )}
-                      <button
-                        style={{
-                          fontSize: '0.75rem',
-                          padding: '4px 10px',
-                          borderRadius: 'var(--radius)',
-                          border: '1.5px solid var(--border-2)',
-                          background: 'var(--surface)',
-                          color: 'var(--text-2)',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                        }}
-                        onClick={() => setLeadsModalRep(rep)}
-                      >
-                        Leads ({rep.qtdOrc + rep.fechados + rep.perdidos})
-                      </button>
-                    </div>
+                <div className="vend-card-footer">
+                  <span className="vend-comissao">Comissão: {rep.comissao_pct}%</span>
+                  <div className="vend-card-actions">
+                    <button type="button" className="vend-btn-sm" onClick={() => { setEditRep(rep); setShowForm(true) }}>✎ Editar</button>
+                    <button type="button" className="vend-btn-sm" onClick={() => setLeadsRep(rep)}>📋 Leads ({rep.allLeads.length})</button>
                   </div>
-
-                  {isAdmin && rep.ativo && (
-                    <button
-                      style={{
-                        fontSize: '0.72rem',
-                        padding: '3px 10px',
-                        borderRadius: 'var(--radius)',
-                        border: '1.5px solid var(--danger)',
-                        background: 'var(--danger-bg)',
-                        color: 'var(--danger)',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        alignSelf: 'flex-start',
-                      }}
-                      onClick={() => void handleInativar(rep)}
-                    >
-                      Inativar
-                    </button>
-                  )}
-
-                  {isAdmin && !rep.ativo && (
-                    <button
-                      style={{
-                        fontSize: '0.72rem',
-                        padding: '3px 10px',
-                        borderRadius: 'var(--radius)',
-                        border: '1.5px solid var(--success)',
-                        background: 'var(--success-bg)',
-                        color: 'var(--success)',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        alignSelf: 'flex-start',
-                      }}
-                      onClick={() => void handleReativar(rep)}
-                    >
-                      Reativar
-                    </button>
+                  {isAdmin && (
+                    <div style={{ marginTop:6 }}>
+                      {rep.ativo
+                        ? <button type="button" className="vend-btn-inativar" onClick={() => void handleInativar(rep)}>Inativar</button>
+                        : <button type="button" className="vend-btn-reativar" onClick={() => void handleReativar(rep)}>↺ Reativar</button>
+                      }
+                    </div>
                   )}
                 </div>
               </div>
@@ -851,105 +531,41 @@ export function VendedoresPage() {
         </div>
       )}
 
-      {/* ── Rep Form Modal ────────────────────────────────────────────── */}
-      <RepFormModal
-        open={formOpen}
-        onClose={() => {
-          setFormOpen(false)
-          setEditRep(null)
-        }}
-        initial={editRep}
-        onSave={handleSave}
-        saving={isSaving}
-      />
-
-      {/* ── Rep Leads Modal ───────────────────────────────────────────── */}
-      <RepLeadsModal
-        open={leadsModalRep !== null}
-        onClose={() => setLeadsModalRep(null)}
-        rep={leadsModalRep}
-        leads={leads}
-        clientesMap={clientesMap}
-        stagesMap={stagesMap}
-      />
-
-      {/* Suppressed navigate usage to avoid lint — it's used inside RepLeadsModal via closure */}
-      <span style={{ display: 'none' }} data-navigate={String(!!navigate)} />
+      {showForm && (
+        <RepFormModal open={showForm} onClose={() => { setShowForm(false); setEditRep(null) }}
+          initial={editRep} onSave={handleSave} saving={createRep.isPending || updateRep.isPending} />
+      )}
+      {leadsRep && (
+        <RepLeadsModal rep={leadsRep} leads={leads.filter(l => l.representante_id === leadsRep.id)}
+          open={!!leadsRep} onClose={() => setLeadsRep(null)} />
+      )}
     </div>
   )
 }
 
-// ── Sub-components ───────────────────────────────────────────────────────────
-
-function StatMini({ value, label }: { value: string | number; label: string }) {
+function StatCard({ value, label, icon }: { value: string | number; label: string; icon: string }) {
   return (
-    <div
-      style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius)',
-        padding: '12px 16px',
-        textAlign: 'center',
-      }}
-    >
-      <strong
-        style={{
-          display: 'block',
-          fontSize: '1.2rem',
-          fontWeight: 800,
-          color: 'var(--primary)',
-        }}
-      >
-        {value}
-      </strong>
-      <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{label}</span>
+    <div className="vend-stat-card">
+      <span className="vend-stat-icon">{icon}</span>
+      <div>
+        <strong className="vend-stat-value">{value}</strong>
+        <span className="vend-stat-label">{label}</span>
+      </div>
     </div>
   )
 }
 
 function RepStat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div style={{ textAlign: 'center' }}>
-      <strong
-        style={{
-          display: 'block',
-          fontSize: '1rem',
-          fontWeight: 800,
-          color: 'var(--primary)',
-        }}
-      >
-        {value}
-      </strong>
-      <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>{label}</span>
+    <div className="vend-rep-stat">
+      <strong>{value}</strong>
+      <span>{label}</span>
     </div>
   )
 }
 
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
+function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '6px 14px',
-        borderRadius: 'var(--radius)',
-        border: active ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
-        background: active ? 'var(--primary)' : 'var(--surface)',
-        color: active ? '#fff' : 'var(--text-2)',
-        fontWeight: 600,
-        fontSize: '0.82rem',
-        cursor: 'pointer',
-        transition: 'var(--transition)',
-      }}
-    >
-      {children}
-    </button>
+    <button type="button" className={`vend-tab-btn${active ? ' active' : ''}`} onClick={onClick}>{children}</button>
   )
 }

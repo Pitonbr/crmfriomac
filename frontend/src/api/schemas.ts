@@ -59,13 +59,32 @@ export type CanalRep = z.infer<typeof CanalRepSchema>;
 export const RepresentanteSchema = z.object({
   id: z.string().uuid(),
   user_id: z.string().uuid().nullable().optional(),
+  // Identificação
   nome: z.string(),
+  nome_fantasia: z.string().nullable().optional(),
+  razao_social: z.string().nullable().optional(),
+  cnpj: z.string().nullable().optional(),
   canal: CanalRepSchema,
   comissao_pct: z.coerce.number(),
-  cidade: z.string().nullable().optional(),
-  estado: z.string().nullable().optional(),
+  // Contato
   email: z.string().nullable().optional(),
   telefone: z.string().nullable().optional(),
+  endereco: z.string().nullable().optional(),
+  cep: z.string().nullable().optional(),
+  cidade: z.string().nullable().optional(),
+  estado: z.string().nullable().optional(),
+  // Financeiro
+  banco: z.string().nullable().optional(),
+  agencia: z.string().nullable().optional(),
+  conta: z.string().nullable().optional(),
+  pix: z.string().nullable().optional(),
+  obs_financeiro: z.string().nullable().optional(),
+  // Redes Sociais
+  instagram: z.string().nullable().optional(),
+  linkedin: z.string().nullable().optional(),
+  tiktok: z.string().nullable().optional(),
+  website: z.string().nullable().optional(),
+  outras_redes: z.string().nullable().optional(),
   ativo: z.boolean(),
 });
 export type Representante = z.infer<typeof RepresentanteSchema>;
