@@ -51,6 +51,11 @@ dependencies = [
 
     # Templates (email)
     "jinja2>=3.1",
+
+    # Machine Learning — probabilidade de fechamento e previsão de receita
+    "scikit-learn>=1.5",
+    "numpy>=1.26",
+    "joblib>=1.4",
 ]
 
 [project.optional-dependencies]

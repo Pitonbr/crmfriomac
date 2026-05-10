@@ -10,6 +10,7 @@ from app.api.v1 import (
     entregas,
     kpis,
     leads,
+    ml,
     notificacoes,
     orcamentos,
     relatorio_vendas,
@@ -31,4 +32,5 @@ router.include_router(anexos.router)
 router.include_router(kpis.router)
 router.include_router(notificacoes.router)
 router.include_router(relatorio_vendas.router)
+router.include_router(ml.router)
 router.include_router(webhooks.router)

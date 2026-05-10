@@ -9,6 +9,7 @@ from app.deps.auth import CurrentUserDep, get_current_user
 from app.deps.db import get_session
 from app.schemas.kpi import DashboardKPIs, LeadProbabilidade
 from app.services.kpis import KpiService
+from app.services.ml_service import MLService
 
 router = APIRouter(prefix="/kpis", tags=["kpis"], dependencies=[Depends(get_current_user)])
 
@@ -27,8 +28,10 @@ async def probabilidade_fechamento(
     _user: CurrentUserDep,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> list[LeadProbabilidade]:
-    """Retorna leads com probabilidade de fechamento entre 60% e 95%,
-    calculada pelo algoritmo de palavras-chave + estágio + projeto + inatividade.
+    """Retorna leads com probabilidade de fechamento entre 60% e 95%.
+
+    Usa o ensemble ML+Regras: modelo GBM calibrado quando há dados suficientes,
+    modelo de regras (baseline) caso contrário.
     """
-    service = KpiService(session)
-    return await service.probabilidade_fechamento()
+    svc = MLService(session)
+    return await svc.probabilidade_fechamento()
