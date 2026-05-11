@@ -107,3 +107,23 @@
 }
 
 .cfg-copy-btn:hover { filter: brightness(1.07); }
+
+.cfg-btn-delete {
+  padding: 4px 10px;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--danger);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition);
+}
+
+.cfg-btn-delete:hover {
+  background: var(--danger);
+  color: white;
+}
+
+.cfg-btn-delete:disabled { opacity: 0.5; cursor: not-allowed; }

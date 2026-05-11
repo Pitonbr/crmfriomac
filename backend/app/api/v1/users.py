@@ -137,6 +137,43 @@ async def reset_password(
     return {"senha_provisoria": new_pwd, "user_nome": target.nome}
 
 
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[require_role(UserRole.MASTER)])
+async def delete_user(
+    user_id: UUID,
+    actor: CurrentUserDep,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> None:
+    """Exclui permanentemente um usuário. Somente master. Não permite auto-exclusão."""
+    if str(user_id) == str(actor.id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="não é possível excluir a própria conta",
+        )
+
+    repo = UserRepository(session)
+    target = await repo.get_by_id(user_id)
+    if target is None or target.tenant_id != actor.tenant_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    if target.role == UserRole.MASTER:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="não é possível excluir outro usuário master",
+        )
+
+    svc = UserManagementService(session)
+    await svc._log(
+        tenant_id=actor.tenant_id,
+        actor=actor,
+        acao="delete",
+        entidade="user",
+        entidade_id=str(target.id),
+        descricao=f"Usuário '{target.nome}' ({target.role}) EXCLUÍDO por {actor.nome}.",
+    )
+    await session.delete(target)
+    await session.flush()
+
+
 @router.get("/audit-log", response_model=list[AuditLogOut], dependencies=[require_role(UserRole.MASTER)])
 async def get_audit_log(
     user: CurrentUserDep,

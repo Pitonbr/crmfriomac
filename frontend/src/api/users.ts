@@ -52,6 +52,10 @@ export async function resetUserPassword(id: string): Promise<{ senha_provisoria:
   return data as { senha_provisoria: string; user_nome: string };
 }
 
+export async function deleteUser(id: string): Promise<void> {
+  await http<void>(`/api/v1/users/${id}`, { method: 'DELETE' });
+}
+
 export async function getAuditLog(): Promise<AuditLog[]> {
   const data = await http<unknown>('/api/v1/users/audit-log');
   return z.array(AuditLogSchema).parse(data);

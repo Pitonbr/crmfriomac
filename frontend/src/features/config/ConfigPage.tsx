@@ -8,6 +8,7 @@ import { useStages } from '@/hooks/queries/useStages';
 import {
   useAuditLog,
   useCreateUser,
+  useDeleteUser,
   useResetUserPassword,
   useToggleUser,
   useUsers,
@@ -117,6 +118,7 @@ export function ConfigPage() {
   const { data: auditLog, isPending: auditLoading } = useAuditLog();
   const toggleUser = useToggleUser();
   const resetPwd = useResetUserPassword();
+  const deleteUser = useDeleteUser();
 
   const [tab, setTab] = useState<ConfigTab>('perfil');
   const [showNovo, setShowNovo] = useState(false);
@@ -134,6 +136,16 @@ export function ConfigPage() {
       toast.success(`Usuário ${u.ativo ? 'inativado' : 'reativado'}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro');
+    }
+  };
+
+  const handleDelete = async (u: UserOut) => {
+    if (!confirm(`⚠️ EXCLUIR PERMANENTEMENTE "${u.nome}"?\n\nEsta ação não pode ser desfeita. O usuário perderá acesso imediatamente.`)) return;
+    try {
+      await deleteUser.mutateAsync(u.id);
+      toast.success(`Usuário "${u.nome}" excluído permanentemente`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao excluir');
     }
   };
 
@@ -241,6 +253,9 @@ export function ConfigPage() {
                           </button>
                           <button type="button" className="cli-ver-btn" onClick={() => void handleResetPwd(u)} disabled={resetPwd.isPending} title="Gerar nova senha provisória">
                             🔑 Reset
+                          </button>
+                          <button type="button" className="cfg-btn-delete" onClick={() => void handleDelete(u)} disabled={deleteUser.isPending} title="Excluir usuário permanentemente">
+                            🗑 Excluir
                           </button>
                         </div>
                       </td>
