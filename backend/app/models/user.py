@@ -9,9 +9,12 @@ from app.db.base import Base, TenantMixin, TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class UserRole(StrEnum):
-    MASTER = "master"
-    VENDEDOR = "vendedor"
-    REPRESENTANTE = "representante"
+    MASTER           = "master"
+    ADM_COMERCIAL    = "adm_comercial"
+    ADM_MARKETING    = "adm_marketing"
+    ADM_OPERACIONAL  = "adm_operacional"
+    REPRESENTANTE    = "representante"
+    VENDEDOR         = "vendedor"   # mantido por compatibilidade → converte para representante
 
 
 class User(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
@@ -29,6 +32,7 @@ class User(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
 
     nome: Mapped[str] = mapped_column(String(200), nullable=False)
     email: Mapped[str] = mapped_column(String(254), nullable=False)
+    telefone: Mapped[str | None] = mapped_column(String(40), nullable=True)
     senha_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(String(20), nullable=False)
     avatar: Mapped[str | None] = mapped_column(String(8), nullable=True)

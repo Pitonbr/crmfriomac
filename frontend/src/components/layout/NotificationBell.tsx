@@ -12,14 +12,26 @@ type TipoCfg = { icon: string; color: string; bg: string; fallbackLink: string }
 const DEFAULT_CFG: TipoCfg = { icon: '📋', color: '#64748B', bg: '#F1F5F9', fallbackLink: '/dashboard' };
 
 // ── Configuração visual por tipo ─────────────────────────────────
+// 🔴 VERMELHO = auditoria/log do sistema
+// 🔵 AZUL     = mensagens de usuários
+// 🟡 AMARELO  = alterações em funis e leads
+// 🟢 VERDE    = marketing e campanhas
 const TIPO_CONFIG: Record<string, TipoCfg> = {
-  sla_estourando:  { icon: '⏰', color: '#D97706', bg: '#FEF3C7', fallbackLink: '/kanban' },
+  // VERMELHO — auditoria/log
+  auditoria:       { icon: '🔴', color: '#DC2626', bg: '#FEE2E2', fallbackLink: '/config' },
   sla_estourado:   { icon: '⏰', color: '#DC2626', bg: '#FEE2E2', fallbackLink: '/kanban' },
-  lead_ganho:      { icon: '🏆', color: '#16A34A', bg: '#DCFCE7', fallbackLink: '/kanban' },
   lead_perdido:    { icon: '❌', color: '#DC2626', bg: '#FEE2E2', fallbackLink: '/kanban' },
-  comissao_nova:   { icon: '💰', color: '#0B2D54', bg: '#EFF6FF', fallbackLink: '/comissoes' },
-  entrega_proxima: { icon: '📦', color: '#0D9488', bg: '#CCFBF1', fallbackLink: '/prazos' },
-  sistema:         { icon: '⚙️', color: '#64748B', bg: '#F1F5F9', fallbackLink: '/config' },
+  sistema:         { icon: '⚙️', color: '#DC2626', bg: '#FEE2E2', fallbackLink: '/config' },
+  // AZUL — mensagens de usuários
+  mensagem:        { icon: '💬', color: '#2563EB', bg: '#EFF6FF', fallbackLink: '/dashboard' },
+  comissao_nova:   { icon: '💰', color: '#2563EB', bg: '#EFF6FF', fallbackLink: '/comissoes' },
+  // AMARELO — funil/leads
+  sla_estourando:  { icon: '⏰', color: '#D97706', bg: '#FEF3C7', fallbackLink: '/kanban' },
+  lead_ganho:      { icon: '🏆', color: '#D97706', bg: '#FEF3C7', fallbackLink: '/kanban' },
+  lead_mudanca:    { icon: '🔄', color: '#D97706', bg: '#FEF3C7', fallbackLink: '/kanban' },
+  entrega_proxima: { icon: '📦', color: '#D97706', bg: '#FEF3C7', fallbackLink: '/prazos' },
+  // VERDE — marketing/campanhas
+  marketing:       { icon: '📣', color: '#16A34A', bg: '#DCFCE7', fallbackLink: '/campanhas' },
 };
 
 export function NotificationBell() {

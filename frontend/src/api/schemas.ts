@@ -1,8 +1,24 @@
 import { z } from 'zod';
 
 // ── Auth ────────────────────────────────────────────────────────────
-export const UserRoleSchema = z.enum(['master', 'vendedor', 'representante']);
+export const UserRoleSchema = z.enum([
+  'master',
+  'adm_comercial',
+  'adm_marketing',
+  'adm_operacional',
+  'representante',
+  'vendedor',  // legacy alias → representante
+]);
 export type UserRole = z.infer<typeof UserRoleSchema>;
+
+export const ROLE_LABELS: Record<string, string> = {
+  master:          '⭐ Admin Master',
+  adm_comercial:   '💼 Admin Comercial',
+  adm_marketing:   '📣 Admin Marketing',
+  adm_operacional: '🔧 Admin Operacional',
+  representante:   '🤝 Representante',
+  vendedor:        '🛒 Vendedor',
+};
 
 export const CurrentUserSchema = z.object({
   id: z.string().uuid(),
@@ -316,8 +332,12 @@ export const NotificacaoTipoSchema = z.enum([
   'sla_estourado',
   'lead_ganho',
   'lead_perdido',
-  'comissao_nova',
+  'lead_mudanca',
   'entrega_proxima',
+  'mensagem',
+  'comissao_nova',
+  'marketing',
+  'auditoria',
   'sistema',
 ]);
 export type NotificacaoTipo = z.infer<typeof NotificacaoTipoSchema>;
@@ -362,3 +382,30 @@ export const DashboardKPIsSchema = z.object({
   leads_recentes: z.array(LeadRecenteSchema),
 });
 export type DashboardKPIs = z.infer<typeof DashboardKPIsSchema>;
+
+// ── User Management ─────────────────────────────────────────────────────────
+export const UserOutSchema = z.object({
+  id: z.string().uuid(),
+  nome: z.string(),
+  email: z.string(),
+  telefone: z.string().nullable().optional(),
+  role: UserRoleSchema,
+  ativo: z.boolean(),
+  senha_provisoria: z.boolean(),
+  criado_em: z.string(),
+  atualizado_em: z.string(),
+});
+export type UserOut = z.infer<typeof UserOutSchema>;
+
+export const AuditLogSchema = z.object({
+  id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  user_nome: z.string(),
+  user_role: z.string(),
+  acao: z.string(),
+  entidade: z.string(),
+  entidade_id: z.string().nullable().optional(),
+  descricao: z.string(),
+  criado_em: z.string(),
+});
+export type AuditLog = z.infer<typeof AuditLogSchema>;

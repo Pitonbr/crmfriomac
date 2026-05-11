@@ -11,13 +11,21 @@ from app.db.base import Base, TenantMixin, TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class NotificacaoTipo(StrEnum):
-    SLA_ESTOURANDO = "sla_estourando"
-    SLA_ESTOURADO = "sla_estourado"
-    LEAD_GANHO = "lead_ganho"
-    LEAD_PERDIDO = "lead_perdido"
-    COMISSAO_NOVA = "comissao_nova"
+    # Funil/leads → AMARELO
+    SLA_ESTOURANDO  = "sla_estourando"
+    SLA_ESTOURADO   = "sla_estourado"
+    LEAD_GANHO      = "lead_ganho"
+    LEAD_PERDIDO    = "lead_perdido"
+    LEAD_MUDANCA    = "lead_mudanca"
     ENTREGA_PROXIMA = "entrega_proxima"
-    SISTEMA = "sistema"
+    # Mensagens de usuários → AZUL
+    MENSAGEM        = "mensagem"
+    COMISSAO_NOVA   = "comissao_nova"
+    # Marketing/Campanhas → VERDE
+    MARKETING       = "marketing"
+    # Auditoria/Log → VERMELHO
+    AUDITORIA       = "auditoria"
+    SISTEMA         = "sistema"
 
 
 class Notificacao(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
