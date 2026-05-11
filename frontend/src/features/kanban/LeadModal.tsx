@@ -18,6 +18,8 @@ import {
 import { useStages } from '@/hooks/queries/useStages';
 import { formatBRL, formatDate, formatDateTime, formatRelative } from '@/lib/formatters';
 import { fileIconForContentType } from './utils';
+import { UserNameTag } from '@/components/ui/UserNameTag';
+import { useUsers } from '@/hooks/queries/useUsers';
 import { OutcomeDialog } from './OutcomeDialog';
 
 type Tab = 'info' | 'obs' | 'anexos';
@@ -35,6 +37,10 @@ export function LeadModal() {
   const addObs = useAddObservacao();
   const updateLead = useUpdateLead();
   const updateCliente = useUpdateCliente();
+  const { data: allUsers } = useUsers();
+  const excluidos = new Set((allUsers ?? []).filter(u => !!u.excluido_em).map(u => u.nome));
+  const isExcluido = (nome: string) => excluidos.has(nome);
+
   const uploadAnexo = useUploadAnexo();
 
   const [tab, setTab] = useState<Tab>('info');
@@ -526,7 +532,9 @@ export function LeadModal() {
                   {(observacoes ?? []).map((o) => (
                     <div key={o.id} className={`obs-item tipo-${o.tipo}`}>
                       <div className="obs-meta">
-                        <span className="obs-autor">{o.autor_nome}</span>
+                        <span className="obs-autor">
+                          <UserNameTag nome={o.autor_nome} excluido={isExcluido(o.autor_nome)} />
+                        </span>
                         <span>·</span>
                         <span>{formatDateTime(o.criado_em)}</span>
                         <span className="obs-tipo-badge">{o.tipo}</span>
@@ -585,7 +593,7 @@ export function LeadModal() {
                       <div className="anx-info">
                         <div className="anx-name">{a.nome_arquivo}</div>
                         <div className="anx-meta">
-                          {formatBytes(a.tamanho_bytes)} · {a.autor_nome} · {formatDate(a.criado_em)}
+                          {formatBytes(a.tamanho_bytes)} · <UserNameTag nome={a.autor_nome} excluido={isExcluido(a.autor_nome)} /> · {formatDate(a.criado_em)}
                         </div>
                       </div>
                       <div className="anx-actions">

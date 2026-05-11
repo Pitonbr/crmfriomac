@@ -18,8 +18,13 @@ class UserOut(BaseModel):
     role: UserRole
     ativo: bool
     senha_provisoria: bool
+    excluido_em: datetime | None = None
     criado_em: datetime
     atualizado_em: datetime
+
+    @property
+    def foi_excluido(self) -> bool:
+        return self.excluido_em is not None
 
 
 class UserCreate(BaseModel):

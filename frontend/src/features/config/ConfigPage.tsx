@@ -15,6 +15,7 @@ import {
 } from '@/hooks/queries/useUsers';
 import type { UserOut } from '@/api/schemas';
 import { ROLE_LABELS } from '@/api/schemas';
+import { UserNameTag } from '@/components/ui/UserNameTag';
 import { formatDate, formatDateTime } from '@/lib/formatters';
 
 import '@/features/clientes/clientes.css';
@@ -140,12 +141,18 @@ export function ConfigPage() {
   };
 
   const handleDelete = async (u: UserOut) => {
-    if (!confirm(`⚠️ EXCLUIR PERMANENTEMENTE "${u.nome}"?\n\nEsta ação não pode ser desfeita. O usuário perderá acesso imediatamente.`)) return;
+    const confirmed = confirm(
+      `⚠️ Remover acesso de "${u.nome}"?\n\n` +
+      `O usuário NÃO conseguirá mais fazer login.\n\n` +
+      `✅ TODOS os dados associados (leads, histórico, mensagens) serão PRESERVADOS na base de dados.\n` +
+      `O nome do usuário continuará visível no histórico com indicador de conta removida.`
+    );
+    if (!confirmed) return;
     try {
       await deleteUser.mutateAsync(u.id);
-      toast.success(`Usuário "${u.nome}" excluído permanentemente`);
+      toast.success(`Acesso de "${u.nome}" removido. Dados históricos preservados.`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Erro ao excluir');
+      toast.error(err instanceof Error ? err.message : 'Erro ao remover acesso');
     }
   };
 
@@ -230,38 +237,55 @@ export function ConfigPage() {
                 </tr>
               </thead>
               <tbody>
-                {(users ?? []).map(u => (
-                  <tr key={u.id} style={{ opacity: u.ativo ? 1 : 0.5 }}>
+                {(users ?? []).map(u => {
+                  const excluido = !!u.excluido_em;
+                  return (
+                  <tr key={u.id} style={{ opacity: excluido ? 0.55 : u.ativo ? 1 : 0.75 }}>
                     <td>
-                      <strong>{u.nome}</strong>
-                      {u.senha_provisoria && <span className="cfg-badge-prov" title="Senha provisória ativa">🔑</span>}
+                      <strong>
+                        <UserNameTag nome={u.nome} excluido={excluido} />
+                      </strong>
+                      {u.senha_provisoria && !excluido && <span className="cfg-badge-prov" title="Senha provisória ativa">🔑</span>}
                     </td>
                     <td style={{ fontSize:'.82rem', color:'var(--text-2)' }}>{u.email}</td>
                     <td style={{ fontSize:'.82rem' }}>{u.telefone ?? '—'}</td>
                     <td><span className="cfg-role-badge">{ROLE_LABELS[u.role] ?? u.role}</span></td>
                     <td>
-                      <span className={`badge ${u.ativo ? 'badge-success' : 'badge-danger'}`}>
-                        {u.ativo ? 'Ativo' : 'Inativo'}
-                      </span>
+                      {excluido ? (
+                        <span className="badge badge-danger" title={`Conta removida em ${formatDate(u.excluido_em)}`}>
+                          🗑 Removido
+                        </span>
+                      ) : (
+                        <span className={`badge ${u.ativo ? 'badge-success' : 'badge-warning'}`}>
+                          {u.ativo ? 'Ativo' : 'Inativo'}
+                        </span>
+                      )}
                     </td>
                     <td style={{ fontSize:'.75rem', color:'var(--text-3)' }}>{formatDate(u.criado_em)}</td>
                     {isMaster && (
                       <td>
-                        <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                          <button type="button" className="cli-ver-btn" onClick={() => void handleToggle(u)} disabled={toggleUser.isPending}>
-                            {u.ativo ? 'Inativar' : 'Reativar'}
-                          </button>
-                          <button type="button" className="cli-ver-btn" onClick={() => void handleResetPwd(u)} disabled={resetPwd.isPending} title="Gerar nova senha provisória">
-                            🔑 Reset
-                          </button>
-                          <button type="button" className="cfg-btn-delete" onClick={() => void handleDelete(u)} disabled={deleteUser.isPending} title="Excluir usuário permanentemente">
-                            🗑 Excluir
-                          </button>
-                        </div>
+                        {excluido ? (
+                          <span style={{ fontSize:'.75rem', color:'var(--text-3)', fontStyle:'italic' }}>
+                            Dados históricos preservados
+                          </span>
+                        ) : (
+                          <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                            <button type="button" className="cli-ver-btn" onClick={() => void handleToggle(u)} disabled={toggleUser.isPending}>
+                              {u.ativo ? 'Inativar' : 'Reativar'}
+                            </button>
+                            <button type="button" className="cli-ver-btn" onClick={() => void handleResetPwd(u)} disabled={resetPwd.isPending} title="Gerar nova senha provisória">
+                              🔑 Reset
+                            </button>
+                            <button type="button" className="cfg-btn-delete" onClick={() => void handleDelete(u)} disabled={deleteUser.isPending} title="Remover acesso — dados preservados">
+                              🗑 Remover
+                            </button>
+                          </div>
+                        )}
                       </td>
                     )}
                   </tr>
-                ))}
+                  );
+                })}
                 {(users ?? []).length === 0 && (
                   <tr><td colSpan={7} style={{ textAlign:'center', padding:32, color:'var(--text-3)' }}>Nenhum usuário cadastrado.</td></tr>
                 )}

@@ -392,6 +392,7 @@ export const UserOutSchema = z.object({
   role: UserRoleSchema,
   ativo: z.boolean(),
   senha_provisoria: z.boolean(),
+  excluido_em: z.string().nullable().optional(),
   criado_em: z.string(),
   atualizado_em: z.string(),
 });

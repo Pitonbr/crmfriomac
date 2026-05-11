@@ -2,6 +2,8 @@
 
 from enum import StrEnum
 
+from datetime import datetime
+
 from sqlalchemy import Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -40,6 +42,12 @@ class User(Base, UUIDPrimaryKeyMixin, TenantMixin, TimestampMixin):
     ativo: Mapped[bool] = mapped_column(default=True, nullable=False)
     # Quando true, frontend força redirect para /change-password antes de outra tela
     senha_provisoria: Mapped[bool] = mapped_column(default=False, nullable=False)
+    # Soft delete — registro NUNCA é removido do banco; apenas login bloqueado
+    excluido_em: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    @property
+    def foi_excluido(self) -> bool:
+        return self.excluido_em is not None
 
     def __repr__(self) -> str:
         return f"<User {self.email} ({self.role})>"

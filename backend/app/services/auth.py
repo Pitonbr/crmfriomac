@@ -127,9 +127,9 @@ class AuthService:
 
         # Carrega o usuário associado para emitir novo access
         user = await self.users.get_by_id(payload.sub)
-        if user is None or not user.ativo:
+        if user is None or not user.ativo or user.excluido_em is not None:
             await self.tokens.revoke(stored)
-            raise InvalidCredentials("usuário desativado")
+            raise InvalidCredentials("usuário desativado ou excluído")
 
         # Rotação: revoga o atual antes de emitir o novo (mitiga replay)
         await self.tokens.revoke(stored)

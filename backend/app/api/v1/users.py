@@ -161,6 +161,10 @@ async def delete_user(
             detail="não é possível excluir outro usuário master",
         )
 
+    # SOFT DELETE — nunca remove o registro; bloqueia login e marca data
+    target.ativo = False
+    target.excluido_em = __import__("app.db.base", fromlist=["utcnow"]).utcnow()
+
     svc = UserManagementService(session)
     await svc._log(
         tenant_id=actor.tenant_id,
@@ -168,9 +172,11 @@ async def delete_user(
         acao="delete",
         entidade="user",
         entidade_id=str(target.id),
-        descricao=f"Usuário '{target.nome}' ({target.role}) EXCLUÍDO por {actor.nome}.",
+        descricao=(
+            f"Usuário '{target.nome}' ({target.role}) marcado como EXCLUÍDO por {actor.nome}. "
+            f"Todos os dados deste usuário foram preservados na base."
+        ),
     )
-    await session.delete(target)
     await session.flush()
 
 

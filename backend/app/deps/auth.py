@@ -41,8 +41,8 @@ async def get_current_user(
 
     repo = UserRepository(session)
     user = await repo.get_by_id(payload.sub)
-    if user is None or not user.ativo:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="usuário inativo")
+    if user is None or not user.ativo or user.excluido_em is not None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="usuário inativo ou excluído")
 
     request.state.user = user
     return user
