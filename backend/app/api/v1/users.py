@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps.auth import CurrentUserDep, get_current_user, require_role
 from app.deps.db import get_session
+from app.models.representante import Representante
 from app.models.user import User, UserRole
 from app.repositories.auth import UserRepository
 from app.schemas.user_mgmt import (
@@ -161,11 +162,21 @@ async def delete_user(
             detail="não é possível excluir outro usuário master",
         )
 
+    from app.db.base import utcnow as _utcnow
+    agora = _utcnow()
+
     # SOFT DELETE — nunca remove o registro; bloqueia login e marca data
     target.ativo = False
-    target.excluido_em = __import__("app.db.base", fromlist=["utcnow"]).utcnow()
+    target.excluido_em = agora
+
+    # Se houver um Representante vinculado a este usuário → inativa imediatamente
+    rep_stmt = select(Representante).where(Representante.user_id == target.id)
+    rep_vinculado = (await session.execute(rep_stmt)).scalar_one_or_none()
+    if rep_vinculado is not None and rep_vinculado.ativo:
+        rep_vinculado.ativo = False
 
     svc = UserManagementService(session)
+    rep_info = f" Representante '{rep_vinculado.nome}' inativado automaticamente." if rep_vinculado else ""
     await svc._log(
         tenant_id=actor.tenant_id,
         actor=actor,
@@ -174,7 +185,7 @@ async def delete_user(
         entidade_id=str(target.id),
         descricao=(
             f"Usuário '{target.nome}' ({target.role}) marcado como EXCLUÍDO por {actor.nome}. "
-            f"Todos os dados deste usuário foram preservados na base."
+            f"Todos os dados deste usuário foram preservados na base.{rep_info}"
         ),
     )
     await session.flush()

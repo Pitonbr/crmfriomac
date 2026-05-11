@@ -13,7 +13,7 @@ const NAV_ITEMS: readonly NavItem[] = [
   { to: '/kanban',          label: 'Gestão de Leads',    roles: ['master','adm_comercial','representante','adm_operacional','vendedor'] },
   { to: '/orcamentos',      label: 'Orçamentos',         roles: ['master','adm_comercial','representante','adm_operacional','vendedor'] },
   { to: '/clientes',        label: 'Clientes',           roles: ['master','adm_comercial','representante','adm_operacional','vendedor'] },
-  { to: '/vendedores',      label: 'Vendedores & Reps.', roles: ['master','adm_comercial','adm_operacional'] },
+  { to: '/vendedores',      label: 'Representantes Comerciais', roles: ['master','adm_comercial','adm_operacional'] },
   { to: '/campanhas',       label: 'Campanhas & Mídias', roles: ['master','adm_comercial','representante','adm_marketing','adm_operacional','vendedor'] },
   { to: '/comissoes',       label: 'Comissões',          roles: ['master','adm_comercial','representante','adm_operacional','vendedor'] },
   { to: '/prazos',          label: 'Prazo de Entrega',   roles: ['master','adm_comercial','representante','adm_operacional','vendedor'] },

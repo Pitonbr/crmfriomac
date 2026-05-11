@@ -452,8 +452,11 @@ export function VendedoresPage() {
 
   return (
     <div className="page-padded">
+      <div className="page-toolbar" style={{ marginBottom: 4 }}>
+        <h1>Representantes Comerciais</h1>
+      </div>
       <div className="vend-stats-row">
-        <StatCard value={filteredStats.count} label="Vendedores" icon="👤" />
+        <StatCard value={filteredStats.count} label="Representantes" icon="👤" />
         <StatCard value={filteredStats.leadsAtivos} label="Leads Ativos" icon="🔄" />
         <StatCard value={filteredStats.fechados} label="Fechamentos" icon="🏆" />
         <StatCard value={formatBRL(filteredStats.totalOrc)} label="Total Orçado" icon="💰" />
