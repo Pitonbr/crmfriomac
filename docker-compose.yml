@@ -1,0 +1,7 @@
+services:
+  crm:
+    build: .
+    container_name: friomac-crm
+    ports:
+      - "8080:80"
+    restart: unless-stopped
