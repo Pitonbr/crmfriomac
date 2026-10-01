@@ -3388,7 +3388,7 @@ const App = (function() {
           </div>
           <div style="display:flex;gap:10px;margin-top:10px">
             <button class="btn btn-accent" onclick="App.toast('Configurações salvas!','success')">Salvar configurações</button>
-            <button class="btn btn-danger btn-sm" onclick="if(confirm('Resetar todos os dados operacionais?')){FriomacData.resetData();App.toast('Dados resetados!','warning');App.renderScreen('dashboard')}">Reset dados</button>
+            <button class="btn btn-danger btn-sm" onclick="if(confirm('Recarregar todos os dados do servidor?')){FriomacData.resetData().then(()=>{App.toast('Dados recarregados!','warning');App.renderScreen('dashboard')})}">Recarregar dados</button>
           </div>
         </div>
       </div>
@@ -4020,8 +4020,8 @@ const App = (function() {
   }
 
   // ── INIT ───────────────────────────────────────────
-  function init() {
-    FriomacData.init();
+  async function init() {
+    await FriomacData.init();
 
     // Login form
     document.getElementById('login-form')?.addEventListener('submit', handleLogin);
@@ -4071,7 +4071,17 @@ const App = (function() {
     // Session timeout
     _initSessionTimeout();
 
-    showLogin();
+    // Sessão restaurada do servidor (reload de página)?
+    const restoredUser = FriomacData.getUser();
+    if (restoredUser) {
+      hideLogin();
+      updateUserUI(restoredUser);
+      navigateTo('dashboard');
+      updateNotifBadge();
+      _resetSessionTimer();
+    } else {
+      showLogin();
+    }
   }
 
   // ── PUBLIC API ─────────────────────────────────────

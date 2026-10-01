@@ -1,7 +1,36 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: friomac-postgres
+    environment:
+      POSTGRES_USER: friomac
+      POSTGRES_PASSWORD: friomac
+      POSTGRES_DB: friomac_crm
+    volumes:
+      - friomac-postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  api:
+    build: ./server
+    container_name: friomac-api
+    environment:
+      DATABASE_URL: postgres://friomac:friomac@postgres:5432/friomac_crm
+      PORT: 3000
+    volumes:
+      - friomac-uploads:/app/uploads
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
   crm:
     build: .
     container_name: friomac-crm
     ports:
       - "8080:80"
+    depends_on:
+      - api
     restart: unless-stopped
+
+volumes:
+  friomac-postgres-data:
+  friomac-uploads:
